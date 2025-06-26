@@ -7,12 +7,9 @@
     system = "x86_64-linux";
     pkgs = import nixpkgs { inherit system; };
   in {
-    devShell."${system}" = pkgs.mkShell rec {
+    devShell."${system}" = pkgs.pkgsCross.riscv32-embedded.mkShell rec {
       packages = with pkgs; [
         bear
-        clang
-        llvm
-        lld
         qemu
         gnumake
       ];
