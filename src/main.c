@@ -20,13 +20,3 @@ void kernel_main(void) {
   }
 }
 
-__attribute__((section(".text.boot")))
-__attribute__((naked))
-void boot(void) {
-  __asm__ __volatile__(
-      "mv sp, %[STACK_TOP]\n"
-      "j kernel_main\n"
-      :
-      : [STACK_TOP] "r" (STACK_TOP)
-  );
-}
