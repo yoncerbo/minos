@@ -74,19 +74,30 @@ while_end:
 #define STRINGIFY(x) STRINGIFY_INNER(x) 
 
 #define LOG(fmt, ...) \
-  printf("[LOG] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, __VA_ARGS__)
+  printf("[LOG] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, ##__VA_ARGS__)
 #define ERROR(fmt, ...) \
-  printf("[ERROR] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, __VA_ARGS__)
-
+  printf("[ERROR] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, ##__VA_ARGS__)
 #define PANIC(fmt, ...) do { \
-  printf("[PANIC] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, __VA_ARGS__); \
+  printf("[PANIC] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, ##__VA_ARGS__); \
   for (;;) __asm__ __volatile__("wfi"); \
 } while (0)
 
 
 void kernel_main(void) {
-  LOG("Starting kernel...\n", 0);
-  PANIC("The end ", 0);
+  LOG("Starting kernel...\n");
+  __asm__("unimp");
   for (;;) __asm__ __volatile__("wfi");
 }
 
+__attribute__((aligned(4)))
+__attribute__((interrupt("supervisor")))
+void handle_interrupt(void) {
+  uint32_t scause, stval, sepc;
+  __asm__ __volatile__(
+      "csrr %0, scause \n"
+      "csrr %1, stval \n"
+      "csrr %2, sepc \n"
+      : "=r"(scause), "=r"(stval), "=r"(sepc)
+  );
+  PANIC("Interrupt: scause=%d, stval=%d, sepc=%x\n", scause, stval, sepc);
+}
