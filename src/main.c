@@ -70,17 +70,23 @@ while_end:
   va_end(vargs);
 }
 
+#define STRINGIFY_INNER(x) #x
+#define STRINGIFY(x) STRINGIFY_INNER(x) 
+
+#define LOG(fmt, ...) \
+  printf("[LOG] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, __VA_ARGS__)
+#define ERROR(fmt, ...) \
+  printf("[ERROR] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, __VA_ARGS__)
+
+#define PANIC(fmt, ...) do { \
+  printf("[PANIC] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, __VA_ARGS__); \
+  for (;;) __asm__ __volatile__("wfi"); \
+} while (0)
+
+
 void kernel_main(void) {
-  *UART = 'H';
-  *UART = 'e';
-  *UART = 'l';
-  *UART = 'l';
-  *UART = 'o';
-  *UART = '!';
-  *UART = 10;
-  printf("The number is %d.", -1231);
-  for (;;) {
-    __asm__ __volatile__("wfi");
-  }
+  LOG("Starting kernel...\n", 0);
+  PANIC("The end ", 0);
+  for (;;) __asm__ __volatile__("wfi");
 }
 
