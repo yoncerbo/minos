@@ -3,7 +3,11 @@ typedef unsigned int uint32_t;
 typedef int int32_t;
 typedef uint32_t size_t;
 
+typedef struct { void *inner } paddr_t;
+typedef struct { void *inner } vaddr_t;
+
 extern char BSS_START[], BSS_END[], STACK_TOP[];
+extern char HEAP_START[], HEAP_END[];
 
 volatile char *UART = (char *)0x10000000;
 
@@ -82,10 +86,24 @@ while_end:
   for (;;) __asm__ __volatile__("wfi"); \
 } while (0)
 
+#define PAGE_SIZE 4096
+
+paddr_t alloc_pages(uint32_t count) {
+  static paddr_t next_paddr = { HEAP_START };
+  paddr_t paddr = next_paddr;
+  next_paddr.inner += count * PAGE_SIZE;
+
+  if (next_paddr.inner > HEAP_END) {
+    PANIC("Failed to allocate %d pages: out of memory!\n", count);
+  }
+
+  // TODO: zero the memory
+  return paddr;
+}
 
 void kernel_main(void) {
   LOG("Starting kernel...\n");
-  __asm__("unimp");
+  alloc_pages(64);
   for (;;) __asm__ __volatile__("wfi");
 }
 

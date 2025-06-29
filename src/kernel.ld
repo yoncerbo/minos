@@ -26,4 +26,9 @@ SECTIONS {
   . += 128 * 1024;
   STACK_TOP = .;
 
+  . = ALIGN(4096);
+  HEAP_START = .;
+  . += 128 * 1024 * 1024;
+  HEAP_END = .;
+
 }
