@@ -6,8 +6,10 @@
 .section .text.boot
 
 boot:
+  # load stack pointer
   la sp, STACK_TOP
 
+  # setup interrupt handler
   la t0, handle_interrupt
   csrw stvec, t0
 
@@ -16,7 +18,11 @@ boot:
   csrw sie, t0
   csrs sstatus, (1 << 1)
 
-  # for testing - causes software interrupt
+  # for testing software interrupt
   # csrs sip, 0b10
 
+  # for testing exceptions
+  # unimp
+
+  # start executing kernel code
   j kernel_main
