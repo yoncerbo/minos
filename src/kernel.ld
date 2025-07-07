@@ -2,6 +2,7 @@ ENTRY(boot)
 
 SECTIONS {
   . = 0x80200000;
+  KERNEL_BASE = .;
   
   .text : {
     KEEP(*(.text.boot));
