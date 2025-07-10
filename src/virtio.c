@@ -29,3 +29,39 @@ typedef volatile struct {
   uint32_t status;
 } VirtioDevice;
 
+#define VIRTQ_ENTRY_NUM 16
+
+typedef struct {
+  uint64_t addr;
+  uint32_t len;
+  uint16_t flags;
+  uint16_t next;
+} VirtqDesc;
+
+typedef struct {
+  uint16_t flags;
+  uint16_t index;
+  uint16_t ring[VIRTQ_ENTRY_NUM];
+} VirtqAvail;
+
+typedef struct {
+  uint32_t id;
+  uint32_t len;
+} VirtqUsedElem;
+
+typedef struct {
+  uint16_t flags;
+  uint16_t index;
+  VirtqUsedElem ring[VIRTQ_ENTRY_NUM];
+} VirtqUsed;
+
+typedef struct {
+  VirtqDesc descs[VIRTQ_ENTRY_NUM];
+  VirtqAvail avail;
+  VirtqUsed used __attribute__((aligned(PAGE_SIZE)));
+  uint32_t queue_index;
+  volatile uint16_t *used_index;
+  uint16_t last_used_index;
+} Virtq;
+
+

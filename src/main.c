@@ -3,6 +3,7 @@
 #include "print.c"
 #include "memory.c"
 #include "interrupts.c"
+#include "virtio.c"
 
 void kernel_main(void) {
   LOG("Starting kernel...\n");
@@ -18,7 +19,7 @@ void kernel_main(void) {
 
   flags = PAGE_R | PAGE_W;
   uint32_t MMIO_START = 0x10000000; // UART
-  uint32_t MMIO_END = 0x10000007; // UART_END
+  uint32_t MMIO_END = MMIO_START + 2 * PAGE_SIZE;
   LOG("|> mmio pages from=0x%x, to=0x%x\n", MMIO_START, MMIO_END); 
   for (char *paddr = (char *)MMIO_START; paddr < (char *)MMIO_END; paddr += PAGE_SIZE) {
     map_page(page_table, (vaddr_t){ paddr }, (paddr_t){ paddr }, flags);
@@ -32,6 +33,9 @@ void kernel_main(void) {
       :
       : [satp] "r" (SATP_SV32 | ((uint32_t)page_table / PAGE_SIZE))
   );
+
+  VirtioDevice *dev = (void *)VIRTIO_MMIO_START;
+  LOG("magic=0x%x, version=%d, device=%d\n", dev->magic, dev->version, dev->device);
 
   LOG("Initialization finished\n");
   for (;;) __asm__ __volatile__("wfi");
