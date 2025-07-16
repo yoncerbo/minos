@@ -3,6 +3,19 @@
 // Legacy virtio interface
 // https://docs.oasis-open.org/virtio/virtio/v1.1/csprd01/virtio-v1.1-csprd01.html#x1-220004
 
+#define SECTOR_SIZE       512
+
+typedef enum {
+  VIRTIO_DEVICE_BLK = 2,
+} VirtioDeviceType;
+
+typedef enum {
+  VIRTIO_STATUS_ACK = 1 << 0,
+  VIRTIO_STATUS_DRIVER = 1 << 1,
+  VIRTIO_STATUS_DRIVER_OK = 1 << 2,
+  VIRTIO_STATUS_FEAT_OK = 1 << 3,
+} VirtioDeviceStatus;
+
 typedef volatile struct {
   uint32_t magic;
   uint32_t version;
@@ -27,41 +40,138 @@ typedef volatile struct {
   uint32_t interrupt_ack;
   char _padding5[8];
   uint32_t status;
+  char _padding6[140];
+  char config[];
 } VirtioDevice;
 
+// TODO: 128 would be the bigges power of 2,
+// that make our virtq still fit inside 2 pages
 #define VIRTQ_ENTRY_NUM 16
+
+typedef enum {
+  VIRTQ_DESC_NEXT = 1,
+  VIRTQ_DESC_WRITE = 2,
+} VirtqDescFlags;
 
 typedef struct {
   uint64_t addr;
   uint32_t len;
   uint16_t flags;
   uint16_t next;
-} VirtqDesc;
+} __attribute__((packed)) VirtqDesc;
 
 typedef struct {
   uint16_t flags;
   uint16_t index;
   uint16_t ring[VIRTQ_ENTRY_NUM];
-} VirtqAvail;
+} __attribute__((packed)) VirtqAvail;
 
 typedef struct {
   uint32_t id;
   uint32_t len;
-} VirtqUsedElem;
+} __attribute__((packed)) VirtqUsedElem;
 
 typedef struct {
   uint16_t flags;
   uint16_t index;
   VirtqUsedElem ring[VIRTQ_ENTRY_NUM];
-} VirtqUsed;
+} __attribute__((packed)) VirtqUsed;
 
-typedef struct {
+typedef volatile struct {
   VirtqDesc descs[VIRTQ_ENTRY_NUM];
   VirtqAvail avail;
   VirtqUsed used __attribute__((aligned(PAGE_SIZE)));
-  uint32_t queue_index;
-  volatile uint16_t *used_index;
-  uint16_t last_used_index;
-} Virtq;
+} __attribute__((packed)) Virtq;
+
+typedef enum {
+  VIRTIO_BLK_IN = 0, // read
+  VIRTIO_BLK_OUT = 1, // write
+} VirtioBlkReqType;
+
+typedef struct {
+  uint32_t type;
+  uint32_t reserved;
+  uint64_t sector;
+} __attribute__((packed)) VirtioBlkReq;
+
+typedef struct {
+  VirtioDevice *dev;
+  Virtq *vq;
+  uint32_t sector_capacity;
+  VirtioBlkReq request;
+  uint8_t status;
+} VirtioBlkdev;
 
 
+VirtioBlkdev virtio_blk_init(void) {
+  VirtioDevice *dev = (void *)0x10001000;
+  if (dev->magic != 0x74726976) PANIC("virtio: invalid magic number");
+  if (dev->version != 1) PANIC("virtio: invalid version");
+  if (dev->device != VIRTIO_DEVICE_BLK) PANIC("virtio: invalid device type");
+
+  dev->status = 0;
+  dev->status |= VIRTIO_STATUS_ACK;
+  dev->status |= VIRTIO_STATUS_DRIVER;
+  dev->status |= VIRTIO_STATUS_FEAT_OK;
+
+  Virtq *vq = (void *)alloc_pages(2);
+  dev->queue_sel = 0;
+  dev->queue_num = VIRTQ_ENTRY_NUM;
+  dev->queue_align = 0;
+  dev->queue_pfn = (uint32_t)vq;
+
+  dev->status |= VIRTIO_STATUS_DRIVER_OK;
+
+  uint64_t capacity = *(uint64_t *)dev->config;
+  printf("virtio: blkdev with capacity = %d\n", (uint32_t)capacity);
+
+  return (VirtioBlkdev){
+    .vq = vq,
+    .sector_capacity = capacity,
+    .dev = dev,
+  };
+}
+
+void read_write_disk(VirtioBlkdev blkdev, void *buf, unsigned sector, int is_write) {
+  // TODO: It should be an error
+  ASSERT(sector < blkdev.sector_capacity);
+
+  blkdev.request.sector = sector;
+  blkdev.request.type = is_write ? VIRTIO_BLK_OUT : VIRTIO_BLK_IN;
+
+  Virtq *vq = blkdev.vq;
+  vq->descs[0] = (VirtqDesc){
+    .addr = (uint32_t)&blkdev.request,
+    .len = sizeof(blkdev.request),
+    .next = 1,
+    .flags = VIRTQ_DESC_NEXT,
+  };
+  vq->descs[1] = (VirtqDesc){
+    .addr = (uint32_t)buf,
+    .len = SECTOR_SIZE,
+    .next = 2,
+    .flags = VIRTQ_DESC_NEXT | (is_write ? 0 : VIRTQ_DESC_WRITE),
+  };
+  vq->descs[2] = (VirtqDesc){
+    .addr = blkdev.status,
+    .len = 1,
+    .flags = VIRTQ_DESC_WRITE,
+  };
+
+  vq->avail.ring[vq->avail.index++ % VIRTQ_ENTRY_NUM] = 0;
+  __sync_synchronize();
+  blkdev.dev->queue_notify = 0;
+  // virtio_reg_write32(VIRTIO_REG_QUEUE_NOTIFY, 0);
+
+  while (vq->avail.index != vq->used.index);
+
+  // TODO: It should be an error
+  ASSERT(blkdev.status == 0);
+}
+
+void test_virtio(void) {
+    VirtioBlkdev blkdev = virtio_blk_init();
+    char buf[SECTOR_SIZE];
+    read_write_disk(blkdev, buf, 0, false );
+    printf("first sector: %s\n", buf);
+}
