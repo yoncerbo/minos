@@ -66,10 +66,7 @@ void handle_supervisor_interrupt(void) {
       case 5:
         printf("Timer\n");
         uint64_t time;
-        __asm__ __volatile__(
-            "rdtime %0"
-            : "r="(time)
-        );
+        __asm__ __volatile__("rdtime %0" : "=r"(time));
         sbi_set_timer(time + 10000000);
         break;
       case 9:
