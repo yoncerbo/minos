@@ -7,6 +7,7 @@
 #include "interrupts.c"
 #include "plic.c"
 #include "virtio.c"
+#include "fat.c"
 
 void kernel_main(void) {
   // TOOD: zero the bss section
@@ -60,7 +61,8 @@ void kernel_main(void) {
 
   // sbi_set_timer(0);
 
-  test_virtio();
+  VirtioBlkdev blkdev = virtio_blk_init();
+  test_fat(blkdev);
 
   LOG("Initialization finished\n");
   for (;;) __asm__ __volatile__("wfi");

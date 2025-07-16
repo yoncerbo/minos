@@ -15,7 +15,7 @@ clean:
 	rm build/* -rf
 
 make-fs:
-	dd if=/dev/zero of=fat.fs bs=1024 count=1M
+	dd if=/dev/zero of=fat.fs bs=1024 count=1K
 	mkfs.vfat fat.fs
 
 mount-fs:

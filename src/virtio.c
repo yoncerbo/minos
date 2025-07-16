@@ -168,10 +168,3 @@ void read_write_disk(VirtioBlkdev blkdev, void *buf, unsigned sector, int is_wri
   // TODO: It should be an error
   ASSERT(blkdev.status == 0);
 }
-
-void test_virtio(void) {
-    VirtioBlkdev blkdev = virtio_blk_init();
-    char buf[SECTOR_SIZE];
-    read_write_disk(blkdev, buf, 0, false );
-    printf("first sector: %s\n", buf);
-}
