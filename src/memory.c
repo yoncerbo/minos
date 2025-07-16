@@ -8,11 +8,11 @@
 #define PAGE_U (1 << 4)
 
 paddr_t alloc_pages(uint32_t count) {
-  static paddr_t next_paddr = { HEAP_START };
+  static paddr_t next_paddr = (size_t)HEAP_START;
   paddr_t paddr = next_paddr;
-  next_paddr.inner += count * PAGE_SIZE;
+  next_paddr += count * PAGE_SIZE;
 
-  if (next_paddr.inner > HEAP_END) {
+  if (next_paddr > HEAP_END) {
     PANIC("Failed to allocate %d pages: out of memory!\n", count);
   }
 
@@ -38,14 +38,14 @@ paddr_t alloc_pages(uint32_t count) {
 // 11-0 Offset
 
 void map_page(uint32_t *table1, vaddr_t vaddr, paddr_t paddr, uint32_t flags) {
-  uint32_t va = (uint32_t)vaddr.inner;
-  uint32_t pa = (uint32_t)paddr.inner;
+  uint32_t va = (uint32_t)vaddr;
+  uint32_t pa = (uint32_t)paddr;
   if (va & 0x7) PANIC("unaligned vaddr %x\n", vaddr);
   if (pa & 0x7) PANIC("unaligned paddr %x\n", paddr);
 
   uint32_t vpn1 = (va >> 22) & 0x3ff;
   if ((table1[vpn1] & PAGE_V) == 0) {
-    uint32_t pt_paddr = (uint32_t)alloc_pages(1).inner;
+    uint32_t pt_paddr = (uint32_t)alloc_pages(1);
     table1[vpn1] = ((pt_paddr / PAGE_SIZE) << 10) | PAGE_V;
   }
 
