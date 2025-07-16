@@ -64,7 +64,13 @@ void handle_supervisor_interrupt(void) {
         PANIC("Supervisor software interrupt");
         break;
       case 5:
-        PANIC("Supervisor timer interrupt");
+        printf("Timer\n");
+        uint64_t time;
+        __asm__ __volatile__(
+            "rdtime %0"
+            : "r="(time)
+        );
+        sbi_set_timer(time + 10000000);
         break;
       case 9:
         PANIC("Supervisor external interrupt");
@@ -72,6 +78,12 @@ void handle_supervisor_interrupt(void) {
       default:
         PANIC("Unknown interrupt cause=%d", code);
     }
+    uint32_t mask = 1 << code;
+    __asm__ __volatile__(
+        "csrc sip, %0"
+        :
+        : "r"(mask)
+    );
     return;
   }
   report_exception(scause, stval, sepc);
