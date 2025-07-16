@@ -1,5 +1,4 @@
 #include "common.h"
-
 // assembly source in boot.s
 // It would be more efficient to use inline assembly,
 // but those functions won't be called a lot, so it doesn't

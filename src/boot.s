@@ -15,6 +15,7 @@ boot:
   csrw stvec, t0
 
   # enable external + software + timer interrupts
+  # https://five-embeddev.github.io/riscv-docs-html/riscv-priv-isa-manual/latest-adoc/supervisor.html
   li t0, (1 << 9) + (1 << 5) + (1 << 1)
   csrw sie, t0
   csrs sstatus, (1 << 1)
