@@ -15,11 +15,13 @@ SECTIONS {
 
   .data : ALIGN(4) {
     *(.data .data.*);
+    *(.sdata .sdata.*);
   }
 
   .bss : ALIGN(4) {
     BSS_START = .;
     *(.bss .bss.*);
+    *(.sbss .sbss.*);
     BSS_END = .;
   }
 
