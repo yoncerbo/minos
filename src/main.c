@@ -62,7 +62,7 @@ void kernel_main(void) {
   // sbi_set_timer(0);
 
   VirtioBlkdev blkdev = virtio_blk_init();
-  test_fat(blkdev);
+  FatDriver fat_driver = fat_driver_init(&blkdev);
 
   LOG("Initialization finished\n");
   for (;;) __asm__ __volatile__("wfi");

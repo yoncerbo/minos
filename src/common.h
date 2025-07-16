@@ -46,6 +46,9 @@ extern char HEAP_START[], HEAP_END[], KERNEL_BASE[];
   } \
 } while (0)
 
+#define DEBUGD(var) \
+  printf(STRINGIFY(var) "=%d\n", var)
+
 volatile char * const UART = (char *)0x10000000;
 
 const uint32_t VIRTIO_MMIO_START = 0x10001000;

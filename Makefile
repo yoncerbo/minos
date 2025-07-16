@@ -1,4 +1,4 @@
-CFLAGS = -std=c11 -Wall -Wextra -fno-stack-protector -ffreestanding -nostdlib
+CFLAGS = -std=c99 -O2 -g3 -Wall -Wextra -fno-stack-protector -ffreestanding -nostdlib
 
 build: src/main.c src/boot.s
 	riscv32-none-elf-gcc ${CFLAGS} -Wl,-Tsrc/kernel.ld -Wl,-Map=out/kernel.map \
@@ -9,7 +9,6 @@ run: build
 		-serial mon:stdio --no-reboot \
 		-drive id=drive0,file=fat.fs,format=raw,if=none \
 		-device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0 \
-
 
 clean:
 	rm build/* -rf

@@ -3,7 +3,7 @@
 // Legacy virtio interface
 // https://docs.oasis-open.org/virtio/virtio/v1.1/csprd01/virtio-v1.1-csprd01.html#x1-220004
 
-#define SECTOR_SIZE       512
+#define SECTOR_SIZE 512
 
 typedef enum {
   VIRTIO_DEVICE_BLK = 2,
@@ -132,17 +132,21 @@ VirtioBlkdev virtio_blk_init(void) {
   };
 }
 
-void read_write_disk(VirtioBlkdev blkdev, void *buf, unsigned sector, int is_write) {
+void read_write_disk(VirtioBlkdev *blkdev, void *buf, unsigned sector, int is_write) {
+  // TODO: allow for reading multiple sectors at once
+
   // TODO: It should be an error
-  ASSERT(sector < blkdev.sector_capacity);
+  ASSERT(sector < blkdev->sector_capacity);
 
-  blkdev.request.sector = sector;
-  blkdev.request.type = is_write ? VIRTIO_BLK_OUT : VIRTIO_BLK_IN;
+  blkdev->request = (VirtioBlkReq){
+    .sector = sector,
+    .type = is_write ? VIRTIO_BLK_OUT : VIRTIO_BLK_IN,
+  };
 
-  Virtq *vq = blkdev.vq;
+  Virtq *vq = blkdev->vq;
   vq->descs[0] = (VirtqDesc){
-    .addr = (uint32_t)&blkdev.request,
-    .len = sizeof(blkdev.request),
+    .addr = (uint32_t)&blkdev->request,
+    .len = sizeof(blkdev->request),
     .next = 1,
     .flags = VIRTQ_DESC_NEXT,
   };
@@ -153,18 +157,17 @@ void read_write_disk(VirtioBlkdev blkdev, void *buf, unsigned sector, int is_wri
     .flags = VIRTQ_DESC_NEXT | (is_write ? 0 : VIRTQ_DESC_WRITE),
   };
   vq->descs[2] = (VirtqDesc){
-    .addr = blkdev.status,
+    .addr = (uint32_t)&blkdev->status,
     .len = 1,
     .flags = VIRTQ_DESC_WRITE,
   };
 
   vq->avail.ring[vq->avail.index++ % VIRTQ_ENTRY_NUM] = 0;
   __sync_synchronize();
-  blkdev.dev->queue_notify = 0;
-  // virtio_reg_write32(VIRTIO_REG_QUEUE_NOTIFY, 0);
+  blkdev->dev->queue_notify = 0;
 
   while (vq->avail.index != vq->used.index);
 
   // TODO: It should be an error
-  ASSERT(blkdev.status == 0);
+  ASSERT(blkdev->status == 0);
 }
