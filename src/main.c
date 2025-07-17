@@ -70,6 +70,12 @@ void kernel_main(void) {
   VfsId fat = vfs_fs_add(&vfs, VFS_FAT32, (void *)&fat_driver);
   vfs_mount_add(&vfs, STR("/"), fat);
 
+  Fid file = vfs_file_open(&vfs, STR("/file.txt"));
+
+  char buffer[SECTOR_SIZE * 3];
+  vfs_file_read_sectors(&vfs, file, 0, 1, buffer);
+  printf("content: %s\n", buffer);
+
   LOG("Initialization finished\n");
   for (;;) __asm__ __volatile__("wfi");
 }

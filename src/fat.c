@@ -64,7 +64,7 @@ typedef struct {
   uint16_t mdate;
   uint16_t cluster_low;
   uint32_t size;
-} FatEntry;
+} __attribute__((packed)) FatEntry;
 
 typedef struct {
   uint8_t order;
@@ -75,7 +75,7 @@ typedef struct {
   uint16_t name_2[6];
   uint8_t _reserved[2];
   uint16_t name_3[2];
-} FatLfn;
+} __attribute__((packed)) FatLfn;
 
 typedef struct {
   uint8_t *buffer;
@@ -83,7 +83,6 @@ typedef struct {
   uint32_t first_data_sector;
   uint32_t first_fat_sector;
   uint32_t root_cluster;
-  uint16_t bytes_per_sector;
   uint8_t sectors_per_cluster;
 } FatDriver;
 
@@ -110,31 +109,55 @@ FatTableEntry fat_next_cluster(FatDriver *driver, uint32_t cluster) {
   return table_value & 0x0fffffff; // the highes 4 bits are reserved
 }
 
-void fat_read_directory_entries(FatDriver *driver, uint32_t cluster) {
+// returns pointer to the internal buffer, that will be overwritten
+FatEntry *fat_find_directory_entry(FatDriver *driver, uint32_t first_directory_cluster, Str name) {
   FatEntry *entries = (void *)driver->buffer;
-  uint32_t sector = first_sector_in_cluster(driver, cluster);
+  uint32_t sector = first_sector_in_cluster(driver, first_directory_cluster);
 
   // TODO: do it for every sector in cluster
   read_write_disk(driver->blkdev, driver->buffer, sector, false);
 
+  bool last_lfn_matched = false;
+
   for (uint32_t i = 0; i < 16; ++i) {
     FatEntry *entry = &entries[i];
     if (!entry->name[0]) break;
-    if (entry->name[0] == 0xe5) {
-      printf("Unused entry\n");
-      continue;
-    }
+    if (entry->name[0] == 0xe5) continue; // unused
+    // TODO: possbily multiple lfn entries, maybe across clusters
     if (entry->attr == FAT_LFN) {
-      printf("long name entry\n");
+      FatLfn *lfn = (void *)entry;
+      ASSERT(name.len <= 13);
+      char buffer[14];
+      buffer[0] = lfn->name_1[0];
+      buffer[1] = lfn->name_1[1];
+      buffer[2] = lfn->name_1[2];
+      buffer[3] = lfn->name_1[3];
+      buffer[4] = lfn->name_1[4];
+      buffer[5] = lfn->name_2[0];
+      buffer[6] = lfn->name_2[1];
+      buffer[7] = lfn->name_2[2];
+      buffer[8] = lfn->name_2[3];
+      buffer[9] = lfn->name_2[4];
+      buffer[10] = lfn->name_2[5];
+      buffer[11] = lfn->name_3[0];
+      buffer[12] = lfn->name_3[1];
+      buffer[14] = 0;
+      uint32_t k = 0;
+      for (; k < name.len && buffer[k] == name.ptr[k]; ++k);
+      last_lfn_matched = k == name.len;
       continue;
     }
+    if (last_lfn_matched) return entry;
+    // TODO: maybe check if the name in entry matches
 
-    printf("name: %s\n", entry->name);
     // uint32_t cluster = ((uint32_t)entry.cluster_high << 16) | entry.cluster_low;
     // uint32_t sector = first_sector_in_cluster(&driver, cluster);
     // DEBUGD(cluster);
     // DEBUGD(sector);
   }
+  return 0;
+
+  // TODO: get next cluster, if necessary
 }
 
 FatDriver fat_driver_init(VirtioBlkdev *blkdev) {
@@ -183,7 +206,7 @@ FatDriver fat_driver_init(VirtioBlkdev *blkdev) {
   ASSERT(total_clusters > 65525);
 
   driver.sectors_per_cluster = bs->sectors_per_cluster;
-  driver.bytes_per_sector = bs->bytes_per_sector;
+  driver.first_data_sector = first_data_sector;
   driver.first_fat_sector = bs->reserved_sector_count;
   driver.root_cluster = ebs->root_cluster;
 
