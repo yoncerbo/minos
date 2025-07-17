@@ -166,8 +166,9 @@ uint32_t vfs_file_read_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, 
       FatDriver *driver = fs->data;
       uint32_t cluster = file->first_cluster;
       uint32_t start_in_clusters = start / driver->sectors_per_cluster;
-      uint32_t end_in_clusters = (start + len) / driver->sectors_per_cluster +
-        (start + len) % driver->sectors_per_cluster ? 1 : 0;
+      // -1 to get the last sector's cluster
+      // and + 1 at the end, as it's the last cluster and we're doing < in for loop
+      uint32_t end_in_clusters = (start + len - 1) / driver->sectors_per_cluster + 1;
 
       DEBUGD(start_in_clusters);
       DEBUGD(end_in_clusters);
