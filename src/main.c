@@ -85,9 +85,9 @@ void kernel_main(void) {
   printf("content: %s\n", buffer);
 
   // test reading multiple sectors, not from start
-  // file = vfs_file_open(&vfs, STR("/dir/file.txt"));
-  // vfs_file_read_sectors(&vfs, file, 0, 1, buffer);
-  // printf("content: %s\n", buffer);
+  file = vfs_file_open(&vfs, STR("/dir/file.txt"));
+  vfs_file_read_sectors(&vfs, file, 0, 1, buffer);
+  printf("content: %s\n", buffer);
 
   // TODO: test reading from next cluster - 9th sector
 

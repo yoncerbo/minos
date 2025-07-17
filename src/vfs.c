@@ -115,15 +115,17 @@ Fid vfs_file_open(Vfs *vfs, Str path) {
   Str name;
   while (1) {
     uint32_t len = 0;
-    for (; len < subpath.len && match.subpath.ptr[len] != '/'; len++);
-    name = (Str){ match.subpath.ptr, len };
+    for (; len < subpath.len && subpath.ptr[len] != '/'; len++);
+    name = (Str){ subpath.ptr, len };
     if (subpath.len <= len) break;
-    // then change first_directory_cluster
+    subpath.len -= len + 1; // include '/'
+    subpath.ptr += len + 1;
 
     FatEntry *fat_entry = fat_find_directory_entry(
         fat_driver, first_directory_cluster, name);
     ASSERT(fat_entry->attr | FAT_DIRECTORY);
     first_directory_cluster = ((uint32_t)fat_entry->cluster_high << 16) | fat_entry->cluster_low;
+    DEBUGD(first_directory_cluster);
   }
 
   FatEntry *fat_entry = fat_find_directory_entry(
