@@ -1,7 +1,6 @@
 #include "common.h"
 
 #define MAX_MOUNT_POINTS 256
-#define MAX_FILE_SYSTEMS 256
 #define MAX_FILES 256
 
 typedef struct {
@@ -12,7 +11,7 @@ typedef struct {
 typedef struct {
   char name[32];
   Fs* fs;
-  uint32_t first_cluster;
+  uint32_t start;
   uint32_t size;
   uint16_t gen;
 } File;
@@ -76,46 +75,44 @@ Fid vfs_file_open(Vfs *vfs, Str path) {
   ASSERT(match.fs != 0);
 
   // TODO: clean up this code
+  switch (match.fs->type) {
+    case FS_FAT32:
+      FatDriver *fat_driver = (void *)match.fs;
+      uint32_t first_directory_cluster = fat_driver->root_cluster;
+      DirEntry entry;
 
-  // For now only one file system type supported
-  ASSERT(match.fs->type == FS_FAT32);
+      Str subpath = match.subpath;
+      Str name;
+      while (1) {
+        uint32_t len = 0;
+        for (; len < subpath.len && subpath.ptr[len] != '/'; len++);
+        name = (Str){ subpath.ptr, len };
+        if (subpath.len <= len) break;
+        subpath.len -= len + 1; // include '/'
+        subpath.ptr += len + 1;
 
-  FatDriver *fat_driver = (void *)match.fs;
-  uint32_t first_directory_cluster = fat_driver->root_cluster;
+        entry = fat_find_directory_entry(fat_driver, first_directory_cluster, name);
+        ASSERT(entry.type == ENTRY_DIR);
+        first_directory_cluster = entry.start;
+      }
 
-  Str subpath = match.subpath;
-  Str name;
-  while (1) {
-    uint32_t len = 0;
-    for (; len < subpath.len && subpath.ptr[len] != '/'; len++);
-    name = (Str){ subpath.ptr, len };
-    if (subpath.len <= len) break;
-    subpath.len -= len + 1; // include '/'
-    subpath.ptr += len + 1;
+      entry = fat_find_directory_entry(fat_driver, first_directory_cluster, name);
+      ASSERT(entry.type == ENTRY_FILE);
 
-    FatEntry *fat_entry = fat_find_directory_entry(
-        fat_driver, first_directory_cluster, name);
-    ASSERT(fat_entry->attr | FAT_DIRECTORY);
-    first_directory_cluster = ((uint32_t)fat_entry->cluster_high << 16) | fat_entry->cluster_low;
-    DEBUGD(first_directory_cluster);
+      uint32_t index = vfs->next_free_file++;
+      ASSERT(index < 256);
+      File *file = &vfs->files[index];
+      // TODO: increment generation?
+      file->start = entry.start;
+      file->size = entry.size;
+      file->fs = match.fs;
+      ASSERT(name.len <= 32);
+      memcpy(&file->name, name.ptr, name.len);
+
+      return (Fid){ file->gen, index };
+    default:
+      PANiC("Unsupported file system type: %d\n", match.fs->type);
   }
-
-  FatEntry *fat_entry = fat_find_directory_entry(
-      fat_driver, first_directory_cluster, name);
-  ASSERT(fat_entry->attr ^ FAT_DIRECTORY);
-  uint32_t cluster = ((uint32_t)fat_entry->cluster_high << 16) | fat_entry->cluster_low;
-
-  uint32_t index = vfs->next_free_file++;
-  ASSERT(index < 256);
-  File *file = &vfs->files[index];
-  // TODO: increment generation?
-  file->first_cluster = cluster;
-  file->size = fat_entry->size;
-  file->fs = match.fs;
-  ASSERT(name.len <= 32);
-  memcpy(&file->name, name.ptr, name.len);
-
-  return (Fid){ file->gen, index };
 }
 
 static inline uint32_t vfs_file_size(Vfs *vfs, Fid fid) {
@@ -135,7 +132,7 @@ uint32_t vfs_file_read_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, 
   switch (file->fs->type) {
     case FS_FAT32:
       FatDriver *driver = (void *)file->fs;
-      uint32_t cluster = file->first_cluster;
+      uint32_t cluster = file->start;
       uint32_t start_in_clusters = start / driver->sectors_per_cluster;
       // -1 to get the last sector's cluster
       // and + 1 at the end, as it's the last cluster and we're doing < in for loop

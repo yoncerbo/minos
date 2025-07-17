@@ -111,8 +111,7 @@ FatTableEntry fat_next_cluster(FatDriver *driver, uint32_t cluster) {
   return table_value & 0x0fffffff; // the highes 4 bits are reserved
 }
 
-// returns pointer to the internal buffer, that will be overwritten
-FatEntry *fat_find_directory_entry(FatDriver *driver, uint32_t first_directory_cluster, Str name) {
+DirEntry fat_find_directory_entry(FatDriver *driver, uint32_t first_directory_cluster, Str name) {
   FatEntry *entries = (void *)driver->buffer;
   uint32_t sector = first_sector_in_cluster(driver, first_directory_cluster);
 
@@ -125,7 +124,6 @@ FatEntry *fat_find_directory_entry(FatDriver *driver, uint32_t first_directory_c
     FatEntry *entry = &entries[i];
     if (!entry->name[0]) break;
     if (entry->name[0] == 0xe5) continue; // unused
-    // TODO: possbily multiple lfn entries, maybe across clusters
     if (entry->attr == FAT_LFN) {
       FatLfn *lfn = (void *)entry;
       // ASSERT(name.len <= 13);
@@ -145,23 +143,20 @@ FatEntry *fat_find_directory_entry(FatDriver *driver, uint32_t first_directory_c
       buffer[12] = lfn->name_3[1];
       buffer[14] = 0;
       uint32_t offset = ((lfn->order & 0xf) - 1) * 13;
-      uint32_t order = lfn->order & 0xf;
       uint32_t k = 0;
       for (; k + offset < name.len && buffer[k] == name.ptr[k + offset]; ++k);
       last_lfn_matched = k == name.len || k == 13;
       continue;
     }
-    if (last_lfn_matched) return entry;
+    if (last_lfn_matched) return (DirEntry){
+      .type = (entry->attr == FAT_DIRECTORY) ? ENTRY_DIR : ENTRY_FILE,
+      .size = entry->size,
+      .start = ((uint32_t)entry->cluster_high << 16) | entry->cluster_low,
+    };
     // TODO: maybe check if the name in entry matches
-
-    // uint32_t cluster = ((uint32_t)entry.cluster_high << 16) | entry.cluster_low;
-    // uint32_t sector = first_sector_in_cluster(&driver, cluster);
-    // DEBUGD(cluster);
-    // DEBUGD(sector);
   }
-  PANIC("No file found!");
-
   // TODO: get next cluster, if necessary
+  return (DirEntry){0};
 }
 
 FatDriver fat_driver_init(VirtioBlkdev *blkdev) {

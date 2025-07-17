@@ -77,4 +77,16 @@ typedef struct {
   FsType type;
 } Fs;
 
+typedef enum {
+  ENTRY_NONE,
+  ENTRY_FILE,
+  ENTRY_DIR,
+} EntryType;
+
+typedef struct {
+  uint32_t size;
+  uint32_t start;
+  EntryType type;
+} DirEntry;
+
 #endif
