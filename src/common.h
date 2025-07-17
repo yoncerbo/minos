@@ -18,6 +18,14 @@ typedef uint32_t size_t;
 typedef size_t paddr_t;
 typedef size_t vaddr_t;
 
+typedef struct {
+  const char *ptr;
+  uint32_t len;
+} Str;
+
+#define CSTR_LEN(str) (sizeof(str) - 1)
+#define STR(str) ((Str){ str, CSTR_LEN(str) })
+
 #define PAGE_SIZE 4096
 
 extern char BSS_START[], BSS_END[], STACK_TOP[];
@@ -52,5 +60,10 @@ extern char HEAP_START[], HEAP_END[], KERNEL_BASE[];
 volatile char * const UART = (char *)0x10000000;
 
 const uint32_t VIRTIO_MMIO_START = 0x10001000;
+
+void memcpy(void *restrict dest, const void *restrict src, size_t n) {
+  char *d = dest, *s = src;
+  for (uint32_t i = 0; i < n; ++i) d[i] = s[i];
+}
 
 #endif

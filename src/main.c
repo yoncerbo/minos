@@ -8,6 +8,7 @@
 #include "plic.c"
 #include "virtio.c"
 #include "fat.c"
+#include "vfs.c"
 
 void kernel_main(void) {
   // TOOD: zero the bss section
@@ -63,6 +64,11 @@ void kernel_main(void) {
 
   VirtioBlkdev blkdev = virtio_blk_init();
   FatDriver fat_driver = fat_driver_init(&blkdev);
+
+  Vfs vfs;
+
+  VfsId fat = vfs_fs_add(&vfs, VFS_FAT32, (void *)&fat_driver);
+  vfs_mount_add(&vfs, STR("/"), fat);
 
   LOG("Initialization finished\n");
   for (;;) __asm__ __volatile__("wfi");
