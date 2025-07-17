@@ -9,59 +9,31 @@ typedef struct {
   uint16_t index;
 } Fid;
 
-typedef enum {
-  VFS_NONE,
-  VFS_FAT32,
-} VfsFsType;
-
-typedef struct {
-  void *data;
-  VfsFsType type;
-  uint8_t gen;
-} VfsFs;
-
-typedef struct {
-  uint8_t index;
-  uint8_t gen;
-} VfsId;
-
 typedef struct {
   char name[32];
+  Fs* fs;
   uint32_t first_cluster;
   uint32_t size;
   uint16_t gen;
-  VfsId fs;
 } File;
 
 typedef struct {
   char path[64];
   uint8_t len;
-  VfsId fs;
+  Fs *fs;
 } VfsMount;
 
 typedef struct {
   VfsMount mounts[256]; // swap-back array
-  VfsFs file_systems[256];
   File files[256];
   uint8_t mounts_len;
-  uint8_t next_free_fs;
   uint8_t next_free_file;
 } Vfs;
 
-VfsId vfs_fs_add(Vfs *vfs, VfsFsType type, void *data) {
-  ASSERT(vfs->next_free_fs < MAX_FILE_SYSTEMS);
-  uint8_t index = vfs->next_free_fs++;
-  VfsFs *fs = &vfs->file_systems[index];
-  fs->type = type;
-  fs->data = data;
-
-  return (VfsId){ index, fs->gen };
-}
-
-void vfs_mount_add(Vfs *vfs, Str path, VfsId fs) {
+void vfs_mount_add(Vfs *vfs, Str path, Fs *fs) {
+  // TODO: add some path processing
   ASSERT(vfs->mounts_len < MAX_MOUNT_POINTS);
   ASSERT(path.len <= 63); // leave one space for 0
-  ASSERT(vfs->file_systems[fs.index].gen == fs.gen);
 
   VfsMount *mount = &vfs->mounts[vfs->mounts_len++];
   mount->len = path.len;
@@ -70,8 +42,8 @@ void vfs_mount_add(Vfs *vfs, Str path, VfsId fs) {
 }
 
 typedef struct {
-  uint32_t index;
   Str subpath;
+  Fs *fs;
 } _MatchResult;
 
 _MatchResult _vfs_mount_match(Vfs *vfs, Str path) {
@@ -92,8 +64,8 @@ _MatchResult _vfs_mount_match(Vfs *vfs, Str path) {
   }
   if (path.ptr[matching] == '/') matching++;
   return (_MatchResult){
-    longest_match,
-    (Str){ &path.ptr[matching], path.len - matching },
+    .subpath = (Str){ &path.ptr[matching], path.len - matching },
+    .fs = longest_match == MAX_MOUNT_POINTS ? 0 : vfs->mounts[longest_match].fs,
   };
 }
 
@@ -101,14 +73,14 @@ Fid vfs_file_open(Vfs *vfs, Str path) {
   if (path.ptr[path.len - 1] == '/') path.len--;
   // TODO: first, check if the file is already open
   _MatchResult match = _vfs_mount_match(vfs, path);
-  if (match.index == 256) return (Fid){0};
+  ASSERT(match.fs != 0);
 
   // TODO: clean up this code
-  VfsFs *fs = &vfs->file_systems[match.index];
-  // For now only one file system type supported
-  ASSERT(fs->type == VFS_FAT32);
 
-  FatDriver *fat_driver = fs->data;
+  // For now only one file system type supported
+  ASSERT(match.fs->type == FS_FAT32);
+
+  FatDriver *fat_driver = (void *)match.fs;
   uint32_t first_directory_cluster = fat_driver->root_cluster;
 
   Str subpath = match.subpath;
@@ -139,8 +111,7 @@ Fid vfs_file_open(Vfs *vfs, Str path) {
   // TODO: increment generation?
   file->first_cluster = cluster;
   file->size = fat_entry->size;
-  // TODO: return fs id in the match
-  file->fs = (VfsId){ match.index, vfs->file_systems[match.index].gen };
+  file->fs = match.fs;
   ASSERT(name.len <= 32);
   memcpy(&file->name, name.ptr, name.len);
 
@@ -160,12 +131,10 @@ uint32_t vfs_file_write(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, const c
 uint32_t vfs_file_read_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, char *buffer) {
   ASSERT(vfs->files[fid.index].gen == fid.gen);
   File *file = &vfs->files[fid.index];
-  ASSERT(vfs->file_systems[file->fs.index].gen == file->fs.gen);
-  VfsFs *fs = &vfs->file_systems[file->fs.index];
 
-  switch (fs->type) {
-    case VFS_FAT32:
-      FatDriver *driver = fs->data;
+  switch (file->fs->type) {
+    case FS_FAT32:
+      FatDriver *driver = (void *)file->fs;
       uint32_t cluster = file->first_cluster;
       uint32_t start_in_clusters = start / driver->sectors_per_cluster;
       // -1 to get the last sector's cluster
@@ -194,7 +163,7 @@ uint32_t vfs_file_read_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, 
       }
       break;
     default:
-      PANIC("unknown file system type: %d", fs->type);
+      PANIC("unknown file system type: %d", file->fs->type);
   }
 
 }

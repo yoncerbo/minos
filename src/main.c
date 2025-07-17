@@ -66,9 +66,7 @@ void kernel_main(void) {
   FatDriver fat_driver = fat_driver_init(&blkdev);
 
   Vfs vfs;
-
-  VfsId fat = vfs_fs_add(&vfs, VFS_FAT32, (void *)&fat_driver);
-  vfs_mount_add(&vfs, STR("/"), fat);
+  vfs_mount_add(&vfs, STR("/"), &fat_driver.fs);
 
   // TODO: add test and mock devices
   Fid file = vfs_file_open(&vfs, STR("/file.txt"));
@@ -76,20 +74,18 @@ void kernel_main(void) {
   // test reading first sector
   char buffer[SECTOR_SIZE * 3];
   vfs_file_read_sectors(&vfs, file, 0, 1, buffer);
-  printf("content: %s\n", buffer);
+  // printf("content: %s\n", buffer);
 
   // test reading multiple sectors, not from start
   // also reading from the middle of the next cluster
   file = vfs_file_open(&vfs, STR("/some_long_filename.txt"));
-  vfs_file_read_sectors(&vfs, file, 8, 1, buffer);
-  printf("content: %s\n", buffer);
+  vfs_file_read_sectors(&vfs, file, 8, 2, buffer);
+  // printf("content: %s\n", buffer);
 
   // test reading multiple sectors, not from start
   file = vfs_file_open(&vfs, STR("/dir/file.txt"));
   vfs_file_read_sectors(&vfs, file, 0, 1, buffer);
-  printf("content: %s\n", buffer);
-
-  // TODO: test reading from next cluster - 9th sector
+  // printf("content: %s\n", buffer);
 
   LOG("Initialization finished\n");
   for (;;) __asm__ __volatile__("wfi");

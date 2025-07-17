@@ -78,6 +78,7 @@ typedef struct {
 } __attribute__((packed)) FatLfn;
 
 typedef struct {
+  Fs fs; // every file system driver needs this header
   uint8_t *buffer;
   VirtioBlkdev *blkdev;
   uint32_t first_data_sector;
@@ -103,6 +104,7 @@ FatTableEntry fat_next_cluster(FatDriver *driver, uint32_t cluster) {
   uint32_t fat_sector = driver->first_fat_sector + (fat_offset / SECTOR_SIZE);
   uint32_t ent_offset = fat_offset % SECTOR_SIZE;
 
+  // TODO: cache it instead of reading from disk for every lookup
   read_write_disk(driver->blkdev, driver->buffer, fat_sector, false);
 
   uint32_t table_value = *(uint32_t *)&driver->buffer[ent_offset];
@@ -163,7 +165,11 @@ FatEntry *fat_find_directory_entry(FatDriver *driver, uint32_t first_directory_c
 }
 
 FatDriver fat_driver_init(VirtioBlkdev *blkdev) {
-  FatDriver driver = { .blkdev = blkdev, .buffer = (void *)alloc_pages(1) };
+  FatDriver driver = {
+    .fs.type = FS_FAT32,
+    .blkdev = blkdev,
+    .buffer = (void *)alloc_pages(1)
+  };
   read_write_disk(blkdev, driver.buffer, 0, false);
 
   fat_BS_t *bs = (void *)driver.buffer;

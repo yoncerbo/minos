@@ -66,4 +66,15 @@ void memcpy(void *restrict dest, const void *restrict src, size_t n) {
   for (uint32_t i = 0; i < n; ++i) d[i] = s[i];
 }
 
+// for the forseeable future, I'm just gonna use
+// enums, as I don't need the flexibility of function pointers
+typedef enum {
+  FS_NONE,
+  FS_FAT32,
+} FsType;
+
+typedef struct {
+  FsType type;
+} Fs;
+
 #endif
