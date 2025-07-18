@@ -10,8 +10,8 @@ typedef struct {
 
 typedef struct {
   char name[32];
-  Fs* fs;
-  uint32_t start;
+  Fs* fs; // if zero, then entry is free
+  uint32_t start; // used as next when free
   uint32_t size;
   uint16_t gen;
 } File;
@@ -115,24 +115,30 @@ Fid vfs_file_open(Vfs *vfs, Str path) {
   }
 }
 
+void vfs_file_close(Vfs *vfs, Fid fid) {
+  ASSERT(vfs->files[fid.index].gen == fid.gen);
+  File *file = &vfs->files[fid.index];
+  file->fs = 0; // mark entry as free
+  file->start = vfs->next_free_file;
+  vfs->next_free_file = fid.index;
+}
+
 static inline uint32_t vfs_file_size(Vfs *vfs, Fid fid) {
   ASSERT(vfs->files[fid.index].gen == fid.gen);
   return vfs->files[fid.index].size;
 }
 
-void vfs_file_close(Vfs *vfs, Fid fid);
-
 uint32_t vfs_file_read(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, char *buffer);
 uint32_t vfs_file_write(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, const char *buffer);
 
-uint32_t vfs_file_read_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, char *buffer) {
+uint32_t vfs_file_rw_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, char *buffer, bool is_write) {
   ASSERT(vfs->files[fid.index].gen == fid.gen);
   File *file = &vfs->files[fid.index];
 
   switch (file->fs->type) {
     case FS_FAT32:
       uint32_t cluster = file->start;
-      fat_rw_sectors((void *)file->fs, cluster, start, len, buffer, false);
+      fat_rw_sectors((void *)file->fs, cluster, start, len, buffer, is_write);
       break;
     default:
       PANIC("unknown file system type: %d", file->fs->type);
@@ -140,6 +146,7 @@ uint32_t vfs_file_read_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, 
 
 }
 
+uint32_t vfs_file_read_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, char *buffer);
 uint32_t vfs_file_write_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, const char *buffer);
 
 // Ideas:

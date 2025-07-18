@@ -70,21 +70,22 @@ void kernel_main(void) {
 
   // TODO: add test and mock devices
   Fid file = vfs_file_open(&vfs, STR("/file.txt"));
+  vfs_file_close(&vfs, file);
 
   // test reading first sector
-  char buffer[SECTOR_SIZE * 12];
-  vfs_file_read_sectors(&vfs, file, 0, 1, buffer);
+  // vfs_file_rw_sectors(&vfs, file, 0, 1, buffer, false);
   // printf("content: %s\n", buffer);
 
   // test reading multiple sectors, not from start
   // also reading from the middle of the next cluster
-  file = vfs_file_open(&vfs, STR("/some_long_filename.txt"));
-  vfs_file_read_sectors(&vfs, file, 0, 12, buffer);
+  // file = vfs_file_open(&vfs, STR("/some_long_filename.txt"));
+  // vfs_file_rw_sectors(&vfs, file, 0, 12, buffer, false);
   // printf("content: %s\n", buffer);
 
   // test reading multiple sectors, not from start
-  file = vfs_file_open(&vfs, STR("/dir/file.txt"));
-  vfs_file_read_sectors(&vfs, file, 0, 1, buffer);
+  // test writing
+  // file = vfs_file_open(&vfs, STR("/dir/file.txt"));
+  // vfs_file_rw_sectors(&vfs, file, 0, 1, buffer, false);
   // printf("content: %s\n", buffer);
 
   // TODO: test reading more than one cluster
