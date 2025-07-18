@@ -132,7 +132,7 @@ uint32_t vfs_file_read_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, 
   switch (file->fs->type) {
     case FS_FAT32:
       uint32_t cluster = file->start;
-      fat_driver_read_sectors((void *)file->fs, cluster, start, len, buffer);
+      fat_rw_sectors((void *)file->fs, cluster, start, len, buffer, false);
       break;
     default:
       PANIC("unknown file system type: %d", file->fs->type);
