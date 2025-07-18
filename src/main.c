@@ -72,20 +72,22 @@ void kernel_main(void) {
   Fid file = vfs_file_open(&vfs, STR("/file.txt"));
 
   // test reading first sector
-  char buffer[SECTOR_SIZE * 3];
+  char buffer[SECTOR_SIZE * 12];
   vfs_file_read_sectors(&vfs, file, 0, 1, buffer);
   // printf("content: %s\n", buffer);
 
   // test reading multiple sectors, not from start
   // also reading from the middle of the next cluster
   file = vfs_file_open(&vfs, STR("/some_long_filename.txt"));
-  vfs_file_read_sectors(&vfs, file, 8, 2, buffer);
+  vfs_file_read_sectors(&vfs, file, 0, 12, buffer);
   // printf("content: %s\n", buffer);
 
   // test reading multiple sectors, not from start
   file = vfs_file_open(&vfs, STR("/dir/file.txt"));
   vfs_file_read_sectors(&vfs, file, 0, 1, buffer);
   // printf("content: %s\n", buffer);
+
+  // TODO: test reading more than one cluster
 
   LOG("Initialization finished\n");
   for (;;) __asm__ __volatile__("wfi");

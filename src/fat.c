@@ -215,3 +215,32 @@ FatDriver fat_driver_init(VirtioBlkdev *blkdev) {
 
   return driver;
 }
+
+void fat_driver_read_sectors(FatDriver *driver, uint32_t first_cluster, uint32_t sectors_start, uint32_t sectors_len, char *buffer) {
+  uint32_t start_in_clusters = sectors_start / driver->sectors_per_cluster;
+  // -1 to get the last sector's cluster
+  // and + 1 at the end, as it's the last cluster and we're doing < in for loop
+  uint32_t end_in_clusters = (sectors_start + sectors_len - 1) / driver->sectors_per_cluster + 1;
+  uint32_t cluster = first_cluster;
+
+  uint32_t i = 0;
+  for (; i < start_in_clusters; ++i) {
+    cluster = fat_next_cluster(driver, cluster);
+  }
+  uint32_t total_sectors_read = 0;
+  uint32_t sectors_start_in_cluster = sectors_start % driver->sectors_per_cluster;
+  for (; i < end_in_clusters; ++i) {
+    uint32_t cluster_start_on_disk = first_sector_in_cluster(driver, cluster);
+    uint32_t cluster_len_limit = driver->sectors_per_cluster - sectors_start_in_cluster;
+    uint32_t sectors_len_in_cluster = LIMIT_UP(cluster_len_limit, sectors_len - total_sectors_read);
+
+    char *buffer_start = buffer + SECTOR_SIZE * total_sectors_read;
+    uint32_t first_disk_sector = cluster_start_on_disk + sectors_start_in_cluster;
+    read_write_diskm(driver->blkdev, buffer_start, first_disk_sector, sectors_len_in_cluster, false);
+
+    total_sectors_read += sectors_len_in_cluster;
+    // after the first one it's from the beginning of the cluster
+    sectors_start_in_cluster = 0;
+    cluster = fat_next_cluster(driver, cluster);
+  }
+}

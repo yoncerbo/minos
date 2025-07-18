@@ -111,7 +111,7 @@ Fid vfs_file_open(Vfs *vfs, Str path) {
 
       return (Fid){ file->gen, index };
     default:
-      PANiC("Unsupported file system type: %d\n", match.fs->type);
+      PANIC("Unsupported file system type: %d\n", match.fs->type);
   }
 }
 
@@ -131,33 +131,8 @@ uint32_t vfs_file_read_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, 
 
   switch (file->fs->type) {
     case FS_FAT32:
-      FatDriver *driver = (void *)file->fs;
       uint32_t cluster = file->start;
-      uint32_t start_in_clusters = start / driver->sectors_per_cluster;
-      // -1 to get the last sector's cluster
-      // and + 1 at the end, as it's the last cluster and we're doing < in for loop
-      uint32_t end_in_clusters = (start + len - 1) / driver->sectors_per_cluster + 1;
-
-      DEBUGD(start_in_clusters);
-      DEBUGD(end_in_clusters);
-
-      uint32_t i = 0;
-      for (; i < start_in_clusters; ++i) {
-        cluster = fat_next_cluster(driver, cluster);
-      }
-      uint32_t sectors_read = 0;
-      uint32_t sector = start % driver->sectors_per_cluster;
-      for (; i < end_in_clusters; ++i) {
-        uint32_t cluster_start_on_disk = first_sector_in_cluster(driver, cluster);
-        for (; sector < driver->sectors_per_cluster && sectors_read < len; ++sector) {
-          read_write_disk(driver->blkdev, buffer + SECTOR_SIZE * sectors_read,
-              cluster_start_on_disk + sector, false);
-          sectors_read++;
-          LOG("reading sector %d\n", cluster_start_on_disk + sector);
-        }
-        sector = 0;
-        cluster = fat_next_cluster(driver, cluster);
-      }
+      fat_driver_read_sectors((void *)file->fs, cluster, start, len, buffer);
       break;
     default:
       PANIC("unknown file system type: %d", file->fs->type);

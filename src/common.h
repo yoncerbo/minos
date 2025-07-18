@@ -57,6 +57,11 @@ extern char HEAP_START[], HEAP_END[], KERNEL_BASE[];
 #define DEBUGD(var) \
   printf(STRINGIFY(var) "=%d\n", var)
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define LIMIT_UP(a, b) MIN(a, b)
+#define LIMIT_DOWN(a, b) MAX(a, b)
+
 volatile char * const UART = (char *)0x10000000;
 
 const uint32_t VIRTIO_MMIO_START = 0x10001000;
