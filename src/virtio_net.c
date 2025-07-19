@@ -20,6 +20,7 @@ typedef struct {
   uint16_t gso_size;
   uint16_t csum_start;
   uint16_t num_buffers;
+  char packet[];
 } __attribute__((packed)) VirtioNetHeader;
 
 typedef struct {
@@ -28,12 +29,11 @@ typedef struct {
   Virtq *tq;
   VirtioNetHeader header;
   uint8_t mac[6];
+  uint32_t processed_requests;
+  char *buffers;
 } VirtioNetdev;
 
 VirtioNetdev virtio_net_init(VirtioDevice *dev) {
-  VirtioNetdev netdev = {
-    .dev = dev,
-  };
   ASSERT(dev->magic == 0x74726976);
   ASSERT(dev->version == 1);
   ASSERT(dev->device = VIRTIO_DEVICE_NET);
@@ -55,13 +55,34 @@ VirtioNetdev virtio_net_init(VirtioDevice *dev) {
   Virtq *rq = virtq_create(dev, 0);
   Virtq *tq = virtq_create(dev, 1);
 
+  char *buffers = (void *)alloc_pages(8);
+  printf("buffers' address: 0x%x\n", buffers);
+  uint32_t buffer_size = 2048;
+  for (uint32_t i = 0; i < 16; ++i) {
+    DEBUGD((uint32_t)buffers + buffer_size * i);
+    rq->descs[i] = (VirtqDesc){
+      .addr = (uint32_t)buffers + buffer_size * i,
+      .len = buffer_size,
+      .flags = VIRTQ_DESC_WRITE,
+    };
+    DEBUGD(rq->descs[i].addr);
+    rq->avail.ring[i] = i;
+  }
+  rq->avail.index += 16;
+  __sync_synchronize();
+  // dev->queue_notify = 0;
+
   // 3. Fill the receive queues with buffers 5.1.6.3
   // 5. if you don't have mac addres, generate a random one
   
   dev->status |= VIRTIO_STATUS_DRIVER_OK;
 
-  netdev.rq = rq;
-  netdev.tq = tq;
+  VirtioNetdev netdev = {
+    .dev = dev,
+    .buffers = buffers,
+    .rq = rq,
+    .tq = tq,
+  };
   memcpy(&netdev.mac, mac, 6);
   return netdev;
 }
@@ -95,4 +116,29 @@ void virtio_net_send(VirtioNetdev *netdev, char *packet, uint32_t size) {
 
   // TODO: get rid of it when we have some kind of task system
   while (tq->avail.index != tq->used.index);
+}
+
+void virtio_net_recv(VirtioNetdev *netdev) {
+  while (netdev->rq->used.index <= netdev->processed_requests) {
+    LOG("Waiting\n");
+  }
+  LOG("Packets available\n");
+
+  uint32_t used_index = netdev->processed_requests++;
+  LOG("Processing request %d\n", used_index);
+  VirtqUsedElem elem = netdev->rq->used.ring[used_index];
+  DEBUGD(elem.id);
+  DEBUGD(elem.len);
+
+  VirtqDesc *desc = &netdev->rq->descs[elem.id];
+  // TODO: why the addr is zero?
+  DEBUGD(desc->addr);
+  // We populated the queue, so that each descriptor chain
+  // has only one link
+  ASSERT((desc->flags & VIRTQ_DESC_NEXT) == 0);
+  ASSERT(desc->len == 2048);
+
+  VirtioNetHeader *header = (void *)(netdev->buffers + 2048 * (elem.id % VIRTQ_ENTRY_NUM));
+  EthHeader *eth = (void *)&header->packet;
+  
 }

@@ -55,4 +55,6 @@ void test_networking(VirtioNetdev *netdev) {
   memcpy(arp->sender_mac, netdev->mac, 6);
 
   virtio_net_send(netdev, (char *)eth, sizeof(*eth) + sizeof(*arp));
+
+  virtio_net_recv(netdev);
 }
