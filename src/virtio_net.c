@@ -1,5 +1,4 @@
 #include "common.h"
-#include <string.h>
 
 // https://docs.oasis-open.org/virtio/virtio/v1.1/csprd01/virtio-v1.1-csprd01.html#x1-1940001
 
@@ -26,38 +25,15 @@ typedef struct {
 typedef struct {
   VirtioDevice *dev;
   Virtq *rq;
-  Virtq *tq
+  Virtq *tq;
+  VirtioNetHeader header;
+  uint8_t mac[6];
 } VirtioNetdev;
 
-const uint8_t BROADCAST_MAC[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-
-typedef struct {
-  uint8_t destination_mac[6];
-  uint8_t source_mac[6];
-  uint16_t ether_type;
-  uint8_t data[];
-} __attribute__((packed)) EthHeader;
-
-typedef struct {
-  uint16_t htype;
-  uint16_t ptype;
-  uint8_t hlen;
-  uint8_t plen;
-  uint16_t opcode;
-  uint8_t sender_mac[6];
-  uint32_t sender_ip;
-  uint8_t target_mac[6];
-  uint32_t target_ip;
-} __attribute__((packed)) ArpHeader;
-
-#define IP(x, y, z, w) ((x) << 24 | (y) << 16 | (z) << 8 | (w))
-
-#define bswap16(n) __builtin_bswap16(n)
-#define bswap32(n) __builtin_bswap32(n)
-
-void test_netdev(void) {
-  VirtioDevice *dev = (void *)0x010003000;
-
+VirtioNetdev virtio_net_init(VirtioDevice *dev) {
+  VirtioNetdev netdev = {
+    .dev = dev,
+  };
   ASSERT(dev->magic == 0x74726976);
   ASSERT(dev->version == 1);
   ASSERT(dev->device = VIRTIO_DEVICE_NET);
@@ -65,9 +41,10 @@ void test_netdev(void) {
   dev->status = 0;
   dev->status |= VIRTIO_STATUS_ACK;
   dev->status |= VIRTIO_STATUS_DRIVER;
+
   // Will this work?
   uint32_t features = dev->host_features;
-  DEBUGD(features & VIRTIO_NET_F_MAC);
+  ASSERT(features & VIRTIO_NET_F_MAC);
   dev->guest_features = VIRTIO_NET_F_MAC;
   dev->status |= VIRTIO_STATUS_FEAT_OK;
 
@@ -75,88 +52,47 @@ void test_netdev(void) {
   printf("MAC: %x:%x:%x:%x:%x:%x\n", mac[0], mac[1],
       mac[2], mac[3], mac[4], mac[5]);
 
-  // TODO: the MTU stuff
-
   Virtq *rq = virtq_create(dev, 0);
   Virtq *tq = virtq_create(dev, 1);
 
   // 3. Fill the receive queues with buffers 5.1.6.3
   // 5. if you don't have mac addres, generate a random one
-
+  
   dev->status |= VIRTIO_STATUS_DRIVER_OK;
 
+  netdev.rq = rq;
+  netdev.tq = tq;
+  memcpy(&netdev.mac, mac, 6);
+  return netdev;
+}
+
+void virtio_net_send(VirtioNetdev *netdev, char *packet, uint32_t size) {
   // Send completely checksumed packet
   // flags zero, gso_type = hdr_gso_none
   // the header and packet are added as one output descriptor
   
-  VirtioNetHeader header = {
+  netdev->header = (VirtioNetHeader){
     .num_buffers = 0,
     .flags = 0,
     .gso_type = 0,
   };
-
-  EthHeader *eth = (void*)alloc_pages(1);
-  memcpy(eth->destination_mac, BROADCAST_MAC, 6);
-  memcpy(eth->source_mac, mac, 6);
-  eth->ether_type = bswap16(0x806);
-
-  ArpHeader *arp = (void *)&eth->data;
-  *arp = (ArpHeader){
-    .htype = bswap16(1),
-    .ptype = bswap16(0x800),
-    .hlen = 4,
-    .plen = 6,
-    .opcode = bswap16(1),
-    // .sender_mac = mac,
-    .sender_ip = bswap32(IP(10,0,2,15)),
-    .target_mac = {0},
-    .target_ip = bswap32(IP(10,0,2,2)),
-  };
-  memcpy(arp->sender_mac, mac, 6);
-
+  
+  Virtq *tq = netdev->tq;
   tq->descs[0] = (VirtqDesc){
-    .addr = (uint32_t)&header,
-    .len = sizeof(header),
+    .addr = (uint32_t)&netdev->header,
+    .len = sizeof(netdev->header),
     .next = 1,
     .flags = VIRTQ_DESC_NEXT,
   };
   tq->descs[1] = (VirtqDesc){
-    .addr = (uint32_t)eth,
-    .len = sizeof(*eth) + sizeof(*arp),
+    .addr = (uint32_t)packet,
+    .len = size,
   };
 
   tq->avail.ring[tq->avail.index++ % VIRTQ_ENTRY_NUM] = 0;
   __sync_synchronize();
-  dev->queue_notify = 1;
-  printf("Notified\n");
+  netdev->dev->queue_notify = 1;
 
-  while (tq->avail.index != tq->used.index) {
-    printf("Waiting\n");
-  }
+  // TODO: get rid of it when we have some kind of task system
+  while (tq->avail.index != tq->used.index);
 }
-
-// Ethernet
-// destination mac 6
-// source mac 6
-// ether type 2
-
-// ARP - Address Resolution Protocol
-// translates ip address into mac
-// ether type 0x806
-// Header:
-// hardware type (ethernet = 1)
-// protocol type (ip = 0x800)
-// hardware size = 6
-// protocol size = 4
-// opcode (request = 1, response = 2)
-// sender mac
-// destination mac
-// sender ip
-// destination ip
-// fill ethernet address with all ones - broadcast
-
-// respond to arp requests
-
-// IPv4 struct
-
-// tcp - protocol number = 6

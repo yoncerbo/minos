@@ -87,6 +87,13 @@ int strncmp(const char *s1, const char *s2, size_t n) {
   return (uint8_t)s1[i] - (uint8_t)s2[i];
 }
 
+uint32_t __bswapsi2(uint32_t u) {
+  return ((((u)&0xff000000) >> 24) |
+           (((u)&0x00ff0000) >> 8)  |
+           (((u)&0x0000ff00) << 8)  |
+           (((u)&0x000000ff) << 24));
+}
+
 // for the forseeable future, I'm just gonna use
 // enums, as I don't need the flexibility of function pointers
 typedef enum {

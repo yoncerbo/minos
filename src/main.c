@@ -91,7 +91,8 @@ void kernel_main(void) {
   // test writing
   // test reading more than one cluster
 
-  test_netdev();
+  VirtioNetdev netdev = virtio_net_init((void *)0x10003000);
+  test_networking(&netdev);
 
   LOG("Initialization finished\n");
   for (;;) __asm__ __volatile__("wfi");
