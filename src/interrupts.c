@@ -90,6 +90,9 @@ void handle_supervisor_interrupt(void) {
                 putchar(ch);
             }
             break;
+          case 3:
+            LOG("Network interrupt\n");
+            break;
           default:
             PANIC("Unknown supervisor external interrupt %d", id);
         }

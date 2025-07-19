@@ -7,9 +7,12 @@
 #include "plic.c"
 #include "interrupts.c"
 #include "virtio.c"
+#include "virtio_blk.c"
+#include "virtio_net.c"
 #include "fat.c"
 #include "tar.c"
 #include "vfs.c"
+#include "networking.c"
 
 void kernel_main(void) {
   // TOOD: zero the bss section
@@ -63,6 +66,8 @@ void kernel_main(void) {
   plic_set_priority(10, 3);
   // plic_enable(1);
   // plic_set_priority(1, 3);
+  plic_enable(3);
+  plic_set_priority(3, 3);
 
   // sbi_set_timer(0);
 
@@ -85,6 +90,8 @@ void kernel_main(void) {
   // test reading multiple sectors, not from start
   // test writing
   // test reading more than one cluster
+
+  test_netdev();
 
   LOG("Initialization finished\n");
   for (;;) __asm__ __volatile__("wfi");

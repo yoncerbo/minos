@@ -11,6 +11,9 @@ run: build
 		-device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0 \
 		-drive id=drive1,file=disk.tar,format=raw,if=none \
 		-device virtio-blk-device,drive=drive1,bus=virtio-mmio-bus.1 \
+		-netdev user,id=net0 \
+		-device virtio-net-device,bus=virtio-mmio-bus.2,netdev=net0 \
+		-object filter-dump,id=f1,netdev=net0,file=out/net_dump.dat \
 
 clean:
 	rm build/* -rf
