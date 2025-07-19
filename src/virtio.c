@@ -131,48 +131,7 @@ VirtioBlkdev virtio_blk_init(VirtioDevice *dev) {
   };
 }
 
-// TODO: replace with read_write_diskm
-void read_write_disk(VirtioBlkdev *blkdev, void *buf, unsigned sector, int is_write) {
-  // TODO: allow for reading multiple sectors at once
-
-  // TODO: It should be an error
-  ASSERT(sector < blkdev->sector_capacity);
-
-  blkdev->request = (VirtioBlkReq){
-    .sector = sector,
-    .type = is_write ? VIRTIO_BLK_OUT : VIRTIO_BLK_IN,
-  };
-
-  Virtq *vq = blkdev->vq;
-  vq->descs[0] = (VirtqDesc){
-    .addr = (uint32_t)&blkdev->request,
-    .len = sizeof(blkdev->request),
-    .next = 1,
-    .flags = VIRTQ_DESC_NEXT,
-  };
-  vq->descs[1] = (VirtqDesc){
-    .addr = (uint32_t)buf,
-    .len = SECTOR_SIZE,
-    .next = 2,
-    .flags = VIRTQ_DESC_NEXT | (is_write ? 0 : VIRTQ_DESC_WRITE),
-  };
-  vq->descs[2] = (VirtqDesc){
-    .addr = (uint32_t)&blkdev->status,
-    .len = 1,
-    .flags = VIRTQ_DESC_WRITE,
-  };
-
-  vq->avail.ring[vq->avail.index++ % VIRTQ_ENTRY_NUM] = 0;
-  __sync_synchronize();
-  blkdev->dev->queue_notify = 0;
-
-  while (vq->avail.index != vq->used.index);
-
-  // TODO: It should be an error
-  ASSERT(blkdev->status == 0);
-}
-
-void read_write_diskm(VirtioBlkdev *blkdev, char *buffer, uint32_t first_sector, uint32_t len, bool is_write) {
+void virtio_blk_rw(VirtioBlkdev *blkdev, char *buffer, uint32_t first_sector, uint32_t len, bool is_write) {
   // TODO: It should be an error
   ASSERT(first_sector + len <= blkdev->sector_capacity);
 

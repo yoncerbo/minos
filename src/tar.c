@@ -53,7 +53,7 @@ DirEntry tar_find_file(TarDriver *driver, Str name) {
   TarHeader *header;
 
   while (sector < driver->blkdev->sector_capacity) {
-    read_write_diskm(driver->blkdev, driver->buffer, sector, 1, false);
+    virtio_blk_rw(driver->blkdev, driver->buffer, sector, 1, false);
     header = (void *)driver->buffer;
     size = oct_to_bin(header->size, sizeof(header->size) - 1);
 

@@ -105,7 +105,7 @@ FatTableEntry fat_next_cluster(FatDriver *driver, uint32_t cluster) {
   uint32_t ent_offset = fat_offset % SECTOR_SIZE;
 
   // TODO: cache it instead of reading from disk for every lookup
-  read_write_diskm(driver->blkdev, driver->buffer, fat_sector, 1, false);
+  virtio_blk_rw(driver->blkdev, driver->buffer, fat_sector, 1, false);
 
   uint32_t table_value = *(uint32_t *)&driver->buffer[ent_offset];
   return table_value & 0x0fffffff; // the highes 4 bits are reserved
@@ -116,7 +116,7 @@ DirEntry fat_find_directory_entry(FatDriver *driver, uint32_t first_directory_cl
   uint32_t sector = fat_first_sector_in_cluster(driver, first_directory_cluster);
 
   // TODO: do it for every sector in cluster
-  read_write_diskm(driver->blkdev, driver->buffer, sector, 1, false);
+  virtio_blk_rw(driver->blkdev, driver->buffer, sector, 1, false);
 
   bool last_lfn_matched = false;
 
@@ -165,7 +165,7 @@ FatDriver fat_driver_init(VirtioBlkdev *blkdev) {
     .blkdev = blkdev,
     .buffer = (void *)alloc_pages(1)
   };
-  read_write_diskm(blkdev, driver.buffer, 0, 1, false);
+  virtio_blk_rw(blkdev, driver.buffer, 0, 1, false);
 
   fat_BS_t *bs = (void *)driver.buffer;
   fat_extBS_32 *ebs = (void *)&bs->extended_section;
@@ -237,7 +237,7 @@ void fat_rw_sectors(FatDriver *driver, uint32_t first_cluster, uint32_t sectors_
 
     char *buffer_start = buffer + SECTOR_SIZE * total_sectors_read;
     uint32_t first_disk_sector = cluster_start_on_disk + sectors_start_in_cluster;
-    read_write_diskm(driver->blkdev, buffer_start, first_disk_sector, sectors_len_in_cluster, is_write);
+    virtio_blk_rw(driver->blkdev, buffer_start, first_disk_sector, sectors_len_in_cluster, is_write);
 
     total_sectors_read += sectors_len_in_cluster;
     // after the first one it's from the beginning of the cluster

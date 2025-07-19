@@ -29,7 +29,7 @@ typedef struct {
   uint8_t next_free_file;
 } Vfs;
 
-void vfs_mount_add(Vfs *vfs, Str path, Fs *fs) {
+void vfs_mount(Vfs *vfs, Str path, Fs *fs) {
   // TODO: add some path processing
   ASSERT(vfs->mounts_len < MAX_MOUNT_POINTS);
   ASSERT(path.len <= 63); // leave one space for 0
@@ -68,7 +68,7 @@ _MatchResult _vfs_mount_match(Vfs *vfs, Str path) {
   };
 }
 
-Fid vfs_file_open(Vfs *vfs, Str path) {
+Fid vfs_fopen(Vfs *vfs, Str path) {
   if (path.ptr[path.len - 1] == '/') path.len--;
   // TODO: first, check if the file is already open
   _MatchResult match = _vfs_mount_match(vfs, path);
@@ -136,7 +136,7 @@ Fid vfs_file_open(Vfs *vfs, Str path) {
   }
 }
 
-void vfs_file_close(Vfs *vfs, Fid fid) {
+void vfs_fclose(Vfs *vfs, Fid fid) {
   ASSERT(vfs->files[fid.index].gen == fid.gen);
   File *file = &vfs->files[fid.index];
   file->fs = 0; // mark entry as free
@@ -163,7 +163,7 @@ uint32_t vfs_file_rw_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, ch
       break;
     case FS_USTAR:
       TarDriver *driver = (void *)file->fs;
-      read_write_diskm(driver->blkdev, buffer, file->start + start, len, is_write);
+      virtio_blk_rw(driver->blkdev, buffer, file->start + start, len, is_write);
       break;
     default:
       PANIC("unknown file system type: %d", file->fs->type);
