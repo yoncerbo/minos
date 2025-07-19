@@ -4,8 +4,8 @@
 #include "sbi.c"
 #include "print.c"
 #include "memory.c"
-#include "interrupts.c"
 #include "plic.c"
+#include "interrupts.c"
 #include "virtio.c"
 #include "fat.c"
 #include "tar.c"
@@ -53,13 +53,16 @@ void kernel_main(void) {
       : [satp] "r" (SATP_SV32 | ((uint32_t)page_table / PAGE_SIZE))
   );
 
+  uart_init();
+
+  // Interrupts
+  // 10 - uart
+  // 1..8 - virtio
   plic_set_threshold(0);
   plic_enable(10);
   plic_set_priority(10, 3);
-  plic_enable(1);
-  plic_set_priority(1, 3);
-
-  //test_virtio_blkdev();
+  // plic_enable(1);
+  // plic_set_priority(1, 3);
 
   // sbi_set_timer(0);
 
@@ -71,19 +74,9 @@ void kernel_main(void) {
 
   Vfs vfs;
   // TODO: add path processing to those functions
-  vfs_mount_add(&vfs, STR("/"), &fat_driver.fs);
-  vfs_mount_add(&vfs, STR("/tar/"), &tar_driver.fs);
+  vfs_mount(&vfs, STR("/"), &fat_driver.fs);
+  vfs_mount(&vfs, STR("/tar/"), &tar_driver.fs);
 
-  Fid file = vfs_file_open(&vfs, STR("/file.txt"));
-  vfs_file_close(&vfs, file);
-
-  file = vfs_file_open(&vfs, STR("/tar/inner/file.txt"));
-
-  char buffer [512];
-  vfs_file_rw_sectors(&vfs, file, 0, 1, buffer, false);
-  printf("buffer: %s\n", buffer);
-
-  vfs_file_close(&vfs, file);
 
   // TODO: add test and mock devices
   // test reading first sector

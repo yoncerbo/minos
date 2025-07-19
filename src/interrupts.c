@@ -70,7 +70,30 @@ void handle_supervisor_interrupt(void) {
         sbi_set_timer(time + 10000000);
         break;
       case 9:
-        PANIC("Supervisor external interrupt");
+        uint32_t id = plic_claim();
+        switch (id) {
+          case 10: // UART
+            int ch = *UART;
+            break;
+            printf("char: '%c', %d\n", ch, ch);
+            break;
+            switch (ch) {
+              case 13:
+                putchar(10);
+                break;
+              case 127:
+                putchar(8);
+                putchar(' ');
+                putchar(8);
+                break;
+              default:
+                putchar(ch);
+            }
+            break;
+          default:
+            PANIC("Unknown supervisor external interrupt %d", id);
+        }
+        plic_complete(id);
         break;
       default:
         PANIC("Unknown interrupt cause=%d", code);
