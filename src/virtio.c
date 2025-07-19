@@ -103,11 +103,10 @@ typedef struct {
 } VirtioBlkdev;
 
 
-VirtioBlkdev virtio_blk_init(void) {
-  VirtioDevice *dev = (void *)0x10001000;
-  if (dev->magic != 0x74726976) PANIC("virtio: invalid magic number");
-  if (dev->version != 1) PANIC("virtio: invalid version");
-  if (dev->device != VIRTIO_DEVICE_BLK) PANIC("virtio: invalid device type");
+VirtioBlkdev virtio_blk_init(VirtioDevice *dev) {
+  ASSERT(dev->magic == 0x74726976);
+  ASSERT(dev->version == 1);
+  ASSERT(dev->device = VIRTIO_DEVICE_BLK);
 
   dev->status = 0;
   dev->status |= VIRTIO_STATUS_ACK;
@@ -132,6 +131,7 @@ VirtioBlkdev virtio_blk_init(void) {
   };
 }
 
+// TODO: replace with read_write_diskm
 void read_write_disk(VirtioBlkdev *blkdev, void *buf, unsigned sector, int is_write) {
   // TODO: allow for reading multiple sectors at once
 

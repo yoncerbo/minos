@@ -9,6 +9,8 @@ run: build
 		-serial mon:stdio --no-reboot \
 		-drive id=drive0,file=fat.fs,format=raw,if=none \
 		-device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0 \
+		-drive id=drive1,file=disk.tar,format=raw,if=none \
+		-device virtio-blk-device,drive=drive1,bus=virtio-mmio-bus.1 \
 
 clean:
 	rm build/* -rf

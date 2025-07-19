@@ -1,6 +1,7 @@
 #ifndef INCLUDE_COMMON
 #define INCLUDE_COMMON
 
+#include <string.h>
 #define true 1
 #define false 0
 #define bool _Bool
@@ -56,6 +57,8 @@ extern char HEAP_START[], HEAP_END[], KERNEL_BASE[];
 
 #define DEBUGD(var) \
   printf(STRINGIFY(var) "=%d\n", var)
+#define DEBUGS(var) \
+  printf(STRINGIFY(var) "='%s'\n", var)
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -66,9 +69,22 @@ volatile char * const UART = (char *)0x10000000;
 
 const uint32_t VIRTIO_MMIO_START = 0x10001000;
 
-void memcpy(void *restrict dest, const void *restrict src, size_t n) {
+void *memcpy(void *restrict dest, const void *restrict src, size_t n) {
   char *d = dest, *s = src;
   for (uint32_t i = 0; i < n; ++i) d[i] = s[i];
+  return dest;
+}
+
+void *memset(void *s, int c, size_t n) {
+  uint8_t *p = (uint8_t *)s;
+  while (n--) *p++ = c;
+  return s;
+}
+
+int strncmp(const char *s1, const char *s2, size_t n) {
+  int i = 0;
+  for (; i < n && s1[i] == s2[i]; ++i);
+  return (uint8_t)s1[i] - (uint8_t)s2[i];
 }
 
 // for the forseeable future, I'm just gonna use
@@ -76,6 +92,7 @@ void memcpy(void *restrict dest, const void *restrict src, size_t n) {
 typedef enum {
   FS_NONE,
   FS_FAT32,
+  FS_USTAR,
 } FsType;
 
 typedef struct {

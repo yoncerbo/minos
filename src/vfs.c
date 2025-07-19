@@ -76,7 +76,7 @@ Fid vfs_file_open(Vfs *vfs, Str path) {
 
   // TODO: clean up this code
   switch (match.fs->type) {
-    case FS_FAT32:
+    case FS_FAT32: {
       FatDriver *fat_driver = (void *)match.fs;
       uint32_t first_directory_cluster = fat_driver->root_cluster;
       DirEntry entry;
@@ -99,6 +99,7 @@ Fid vfs_file_open(Vfs *vfs, Str path) {
       entry = fat_find_directory_entry(fat_driver, first_directory_cluster, name);
       ASSERT(entry.type == ENTRY_FILE);
 
+      // TODO: reuse closed files
       uint32_t index = vfs->next_free_file++;
       ASSERT(index < 256);
       File *file = &vfs->files[index];
@@ -110,6 +111,26 @@ Fid vfs_file_open(Vfs *vfs, Str path) {
       memcpy(&file->name, name.ptr, name.len);
 
       return (Fid){ file->gen, index };
+    }
+    case FS_USTAR: {
+      TarDriver *driver = (void *)match.fs;
+      DirEntry entry = tar_find_file(driver, match.subpath);
+      Str name = match.subpath;
+      ASSERT(entry.type == ENTRY_FILE);
+
+      // TODO: reuse closed files
+      uint32_t index = vfs->next_free_file++;
+      ASSERT(index < 256);
+      File *file = &vfs->files[index];
+      // TODO: increment generation?
+      file->start = entry.start;
+      file->size = entry.size;
+      file->fs = match.fs;
+      ASSERT(name.len <= 32);
+      memcpy(&file->name, name.ptr, name.len);
+
+      return (Fid){ file->gen, index };
+    }
     default:
       PANIC("Unsupported file system type: %d\n", match.fs->type);
   }
@@ -139,6 +160,10 @@ uint32_t vfs_file_rw_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, ch
     case FS_FAT32:
       uint32_t cluster = file->start;
       fat_rw_sectors((void *)file->fs, cluster, start, len, buffer, is_write);
+      break;
+    case FS_USTAR:
+      TarDriver *driver = (void *)file->fs;
+      read_write_diskm(driver->blkdev, buffer, file->start + start, len, is_write);
       break;
     default:
       PANIC("unknown file system type: %d", file->fs->type);

@@ -8,6 +8,7 @@
 #include "plic.c"
 #include "virtio.c"
 #include "fat.c"
+#include "tar.c"
 #include "vfs.c"
 
 void kernel_main(void) {
@@ -62,33 +63,35 @@ void kernel_main(void) {
 
   // sbi_set_timer(0);
 
-  VirtioBlkdev blkdev = virtio_blk_init();
+  VirtioBlkdev blkdev = virtio_blk_init((void *)0x10001000);
   FatDriver fat_driver = fat_driver_init(&blkdev);
 
-  Vfs vfs;
-  vfs_mount_add(&vfs, STR("/"), &fat_driver.fs);
+  VirtioBlkdev tar_blkdev = virtio_blk_init((void *)0x10002000);
+  TarDriver tar_driver = tar_driver_init(&tar_blkdev);
 
-  // TODO: add test and mock devices
+  Vfs vfs;
+  // TODO: add path processing to those functions
+  vfs_mount_add(&vfs, STR("/"), &fat_driver.fs);
+  vfs_mount_add(&vfs, STR("/tar/"), &tar_driver.fs);
+
   Fid file = vfs_file_open(&vfs, STR("/file.txt"));
   vfs_file_close(&vfs, file);
 
-  // test reading first sector
-  // vfs_file_rw_sectors(&vfs, file, 0, 1, buffer, false);
-  // printf("content: %s\n", buffer);
+  file = vfs_file_open(&vfs, STR("/tar/inner/file.txt"));
 
+  char buffer [512];
+  vfs_file_rw_sectors(&vfs, file, 0, 1, buffer, false);
+  printf("buffer: %s\n", buffer);
+
+  vfs_file_close(&vfs, file);
+
+  // TODO: add test and mock devices
+  // test reading first sector
   // test reading multiple sectors, not from start
   // also reading from the middle of the next cluster
-  // file = vfs_file_open(&vfs, STR("/some_long_filename.txt"));
-  // vfs_file_rw_sectors(&vfs, file, 0, 12, buffer, false);
-  // printf("content: %s\n", buffer);
-
   // test reading multiple sectors, not from start
   // test writing
-  // file = vfs_file_open(&vfs, STR("/dir/file.txt"));
-  // vfs_file_rw_sectors(&vfs, file, 0, 1, buffer, false);
-  // printf("content: %s\n", buffer);
-
-  // TODO: test reading more than one cluster
+  // test reading more than one cluster
 
   LOG("Initialization finished\n");
   for (;;) __asm__ __volatile__("wfi");
