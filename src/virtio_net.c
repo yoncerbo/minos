@@ -91,7 +91,7 @@ void virtio_net_send(VirtioNetdev *netdev, char *packet, uint32_t size) {
   // Send completely checksumed packet
   // flags zero, gso_type = hdr_gso_none
   // the header and packet are added as one output descriptor
-  
+
   netdev->header = (VirtioNetHeader){
     .num_buffers = 0,
     .flags = 0,
@@ -118,7 +118,8 @@ void virtio_net_send(VirtioNetdev *netdev, char *packet, uint32_t size) {
   while (tq->avail.index != tq->used.index);
 }
 
-void virtio_net_recv(VirtioNetdev *netdev) {
+// Returns the buffer index - 0..16
+uint32_t virtio_net_recv(VirtioNetdev *netdev) {
   while (netdev->rq->used.index <= netdev->processed_requests) {
     LOG("Waiting\n");
   }
@@ -138,7 +139,13 @@ void virtio_net_recv(VirtioNetdev *netdev) {
   ASSERT((desc->flags & VIRTQ_DESC_NEXT) == 0);
   ASSERT(desc->len == 2048);
 
-  VirtioNetHeader *header = (void *)(netdev->buffers + 2048 * (elem.id % VIRTQ_ENTRY_NUM));
-  EthHeader *eth = (void *)&header->packet;
-  
+  return elem.id;
+}
+
+void virtio_net_return_buffer(VirtioNetdev *netdev, uint32_t index) {
+  Virtq *tq = netdev->tq;
+  tq->avail.ring[tq->avail.index++ & VIRTQ_ENTRY_NUM] = 0;
+  // Is it needed?
+  __sync_synchronize();
+  netdev->dev->queue_notify = 0;
 }

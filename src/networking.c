@@ -56,5 +56,20 @@ void test_networking(VirtioNetdev *netdev) {
 
   virtio_net_send(netdev, (char *)eth, sizeof(*eth) + sizeof(*arp));
 
-  virtio_net_recv(netdev);
+  uint32_t index = virtio_net_recv(netdev);
+  DEBUGD(index);
+
+  char *buffer = netdev->buffers + 2048 * index;
+
+  VirtioNetHeader *header = (void *)buffer;
+  eth = (void *)header->packet;
+  ASSERT(bswap16(eth->ether_type) == 0x806);
+
+  arp = (void *)eth->data;
+  ASSERT(arp->opcode == 2); // response
+
+  uint8_t dest_mac[6];
+  memcpy(dest_mac, arp->target_mac, 6);
+
+  virtio_net_return_buffer(netdev, index);
 }
