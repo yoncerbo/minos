@@ -67,10 +67,6 @@ void printf(const char *fmt, ...);
 #define LIMIT_UP(a, b) MIN(a, b)
 #define LIMIT_DOWN(a, b) MAX(a, b)
 
-volatile uint8_t * const UART = (void *)0x10000000;
-
-const uint32_t VIRTIO_MMIO_START = 0x10001000;
-
 void *memcpy(void *restrict dest, const void *restrict src, size_t n) {
   char *d = dest;
   const char *s = src;

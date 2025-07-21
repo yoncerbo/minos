@@ -1,4 +1,5 @@
 #include "common.h"
+#include "sbi.h"
 
 void report_exception(uint32_t cause, uint32_t val, uint32_t epc) {
   switch (cause) {
@@ -46,8 +47,7 @@ void report_exception(uint32_t cause, uint32_t val, uint32_t epc) {
   }
 }
 
-__attribute__((aligned(4)))
-__attribute__((interrupt("supervisor")))
+ALIGNED(4) __attribute__((interrupt("supervisor")))
 void handle_supervisor_interrupt(void) {
   uint32_t scause, stval, sepc;
   __asm__ __volatile__(
@@ -112,8 +112,7 @@ void handle_supervisor_interrupt(void) {
   report_exception(scause, stval, sepc);
 }
 
-__attribute__((aligned(4)))
-__attribute__((interrupt("machine")))
+ALIGNED(4) __attribute__((interrupt("machine")))
 void handle_machine_interrupt(void) {
   uint32_t mcause, mtval, mepc;
   __asm__ __volatile__(

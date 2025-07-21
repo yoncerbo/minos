@@ -36,3 +36,8 @@ extern inline void plic_complete(uint32_t id) {
   volatile uint32_t *claim = (void *)PLIC_CLAIM;
   *claim = id;
 }
+
+extern inline void plic_enablep(uint32_t id, uint8_t priority) {
+  plic_enable(id);
+  plic_set_priority(id, priority);
+}

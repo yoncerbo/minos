@@ -1,7 +1,7 @@
 
 #include "common.h"
+#include "hardware.h"
 #include "uart.c"
-#include "sbi.h"
 #include "print.c"
 #include "memory.c"
 #include "plic.c"
@@ -59,16 +59,9 @@ void kernel_main(void) {
 
   uart_init();
 
-  // Interrupts
-  // 10 - uart
-  // 1..8 - virtio
+  plic_enablep(UART_INT, 3);
+  plic_enablep(VIRTIO_NET_INT, 3);
   plic_set_threshold(0);
-  plic_enable(10);
-  plic_set_priority(10, 3);
-  // plic_enable(1);
-  // plic_set_priority(1, 3);
-  plic_enable(3);
-  plic_set_priority(3, 3);
 
   // sbi_set_timer(0);
 
@@ -91,7 +84,7 @@ void kernel_main(void) {
   // test writing
   // test reading more than one cluster
 
-  VirtioNetdev netdev = virtio_net_init((void *)0x10003000);
+  VirtioNetdev netdev = virtio_net_init(VIRTIO_NET);
   net_dhcp_request(&netdev);
 
   LOG("Initialization finished\n");
