@@ -223,10 +223,142 @@ void net_packet_dhcp_discover(uint8_t *buffer, uint8_t sender_mac[6]) {
   dhcp->options[7] = 255; // end
 }
 
+void net_packet_dhcp_request(uint8_t *buffer, NetCon sender, NetCon dhcp_server) {
+  net_packet_udp(buffer, 
+      (NetCon){ sender.mac, 0, 68},
+      (NetCon){ 0, BROADCAT_IP, 67 },
+      sizeof(DhcpHeader)
+  );
+
+  DhcpHeader *dhcp = (void *)(buffer + NET_SIZE_UDP);
+  *dhcp = (DhcpHeader){
+    .operation = 1,
+    .hardware_type = 1,
+    .hardware_length = 6,
+    .hops = 0,
+    .seconds_elapsed = 0,
+    .flags = bswap16(0x8000), // broadcast
+    .transaction_id = bswap32(0x287), // should be random
+  };
+  memcpy(dhcp->chaddr, sender.mac, 6);
+
+  dhcp->options[0] = 0x63; // magic number
+  dhcp->options[1] = 0x82;
+  dhcp->options[2] = 0x53;
+  dhcp->options[3] = 0x63;
+
+  dhcp->options[4] = 53; // message type
+  dhcp->options[5] = 1;
+  dhcp->options[6] = 3; // request
+
+  dhcp->options[7] = 50;
+  dhcp->options[8] = 4;
+  uint32_t sender_ip = bswap32(sender.ip);
+  memcpy(&dhcp->options[9], &sender_ip, 4);
+
+  dhcp->options[13] = 54;
+  dhcp->options[14] = 4;
+  uint32_t dhcp_server_ip = bswap32(dhcp_server.ip);
+  memcpy(&dhcp->options[15], &dhcp_server_ip, 4);
+  dhcp->options[19] = 255;
+}
+
+void net_handle_dhcp_offer(uint8_t *buffer, NetCon *sender, NetCon *dhcp_server) {
+  EthHeader *eth = (void *)buffer;
+  ASSERT(bswap16(eth->ether_type) == 0x800);
+
+  Ipv4Header *ip = (void *)eth->data;
+  ASSERT(bswap16(ip->protocol == 17));
+
+  UdpHeader *udp = (void *)ip->data;
+  ASSERT(bswap16(udp->length) == sizeof(UdpHeader) + sizeof(DhcpHeader));
+
+  DhcpHeader *dhcp = (void *)udp->data;
+  ASSERT(bswap32(dhcp->transaction_id) == 0x287);
+  sender->ip = bswap32(dhcp->offered_ip);
+  if (dhcp_server->mac) memcpy(dhcp_server->mac, dhcp->chaddr, 6);
+
+  uint8_t *opts = dhcp->options;
+  ASSERT(opts[0] = 0x63); // magic number
+  ASSERT(opts[1] = 0x82);
+  ASSERT(opts[2] = 0x53);
+  ASSERT(opts[3] = 0x63);
+
+  // TODO: maybe parse options instead of hard coding it
+  ASSERT(opts[4] == 53);
+  ASSERT(opts[5] == 1);
+  ASSERT(opts[6] == 2); // dhcp offer
+
+  ASSERT(opts[7] == 54); // server ip
+  ASSERT(opts[8] == 4);
+
+  uint32_t server_ip = IP(opts[9], opts[10], opts[11], opts[12]);
+  dhcp_server->ip = server_ip;
+}
+
+void net_handle_dhcp_ack(uint8_t *buffer, NetCon *sender, NetCon *dhcp_server) {
+  EthHeader *eth = (void *)buffer;
+  ASSERT(bswap16(eth->ether_type) == 0x800);
+
+  Ipv4Header *ip = (void *)eth->data;
+  ASSERT(bswap16(ip->protocol == 17));
+
+  UdpHeader *udp = (void *)ip->data;
+  ASSERT(bswap16(udp->length) == sizeof(UdpHeader) + sizeof(DhcpHeader));
+
+  DhcpHeader *dhcp = (void *)udp->data;
+  ASSERT(bswap32(dhcp->transaction_id) == 0x287);
+  ASSERT(sender->ip == bswap32(dhcp->offered_ip));
+
+  uint8_t *opts = dhcp->options;
+  ASSERT(opts[0] = 0x63); // magic number
+  ASSERT(opts[1] = 0x82);
+  ASSERT(opts[2] = 0x53);
+  ASSERT(opts[3] = 0x63);
+
+  ASSERT(opts[4] == 53);
+  ASSERT(opts[5] == 1);
+  ASSERT(opts[6] == 5); // dhcp ack
+
+  ASSERT(opts[7] == 54); // server ip
+  ASSERT(opts[8] == 4);
+
+  uint32_t server_ip = IP(opts[9], opts[10], opts[11], opts[12]);
+  ASSERT(server_ip == dhcp_server->ip);
+}
+
 void test_networking(VirtioNetdev *netdev) {
   uint8_t *buffer = (void*)alloc_pages(1);
 
   net_packet_dhcp_discover(buffer, netdev->mac);
   virtio_net_send(netdev, buffer, NET_SIZE_DHCP);
 
+  uint8_t dhcp_mac[6];
+  NetCon dhcp_server = { dhcp_mac };
+  NetCon sender = { netdev->mac };
+
+  {
+    uint32_t index = virtio_net_recv(netdev);
+    VirtioNetHeader *header = (void *)(netdev->buffers + 2048 * index);
+    net_handle_dhcp_offer((void *)header->packet, &sender, &dhcp_server);
+    ASSERT(sender.ip == CLIENT_IP);
+    ASSERT(dhcp_server.ip == SERVER_IP);
+    virtio_net_return_buffer(netdev, index);
+  }
+
+  net_packet_dhcp_request(buffer, sender, dhcp_server);
+  virtio_net_send(netdev, buffer, NET_SIZE_DHCP);
+
+  {
+    uint32_t index = virtio_net_recv(netdev);
+    VirtioNetHeader *header = (void *)(netdev->buffers + 2048 * index);
+    net_handle_dhcp_ack((void *)header->packet, &sender, &dhcp_server);
+    virtio_net_return_buffer(netdev, index);
+  }
+
+  {
+    uint32_t index = virtio_net_recv(netdev);
+    printf("finished\n");
+    virtio_net_return_buffer(netdev, index);
+  }
 }
