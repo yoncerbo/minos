@@ -15,6 +15,11 @@
 #include "fs/vfs.c"
 #include "networking.c"
 
+// TODO: setup testing
+// TODO: setup proper memory handling and allocators
+// TODO: task system, processes
+// TODO: virtio gpu and input
+
 void kernel_main(void) {
   // TOOD: zero the bss section
 
