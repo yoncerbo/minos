@@ -82,7 +82,6 @@ void kernel_main(void) {
   vfs_mount(&vfs, STR("/"), &fat_driver.fs);
   vfs_mount(&vfs, STR("/tar/"), &tar_driver.fs);
 
-
   // TODO: add test and mock devices
   // test reading first sector
   // test reading multiple sectors, not from start
@@ -92,7 +91,7 @@ void kernel_main(void) {
   // test reading more than one cluster
 
   VirtioNetdev netdev = virtio_net_init((void *)0x10003000);
-  test_networking(&netdev);
+  net_dhcp_request(&netdev);
 
   LOG("Initialization finished\n");
   for (;;) __asm__ __volatile__("wfi");

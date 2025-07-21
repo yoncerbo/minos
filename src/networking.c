@@ -327,7 +327,7 @@ void net_handle_dhcp_ack(uint8_t *buffer, NetCon *sender, NetCon *dhcp_server) {
   ASSERT(server_ip == dhcp_server->ip);
 }
 
-void test_networking(VirtioNetdev *netdev) {
+void net_dhcp_request(VirtioNetdev *netdev) {
   uint8_t *buffer = (void*)alloc_pages(1);
 
   net_packet_dhcp_discover(buffer, netdev->mac);
@@ -353,12 +353,6 @@ void test_networking(VirtioNetdev *netdev) {
     uint32_t index = virtio_net_recv(netdev);
     VirtioNetHeader *header = (void *)(netdev->buffers + 2048 * index);
     net_handle_dhcp_ack((void *)header->packet, &sender, &dhcp_server);
-    virtio_net_return_buffer(netdev, index);
-  }
-
-  {
-    uint32_t index = virtio_net_recv(netdev);
-    printf("finished\n");
     virtio_net_return_buffer(netdev, index);
   }
 }

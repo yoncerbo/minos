@@ -1,7 +1,6 @@
 #ifndef INCLUDE_COMMON
 #define INCLUDE_COMMON
 
-#include <string.h>
 #define true 1
 #define false 0
 #define bool _Bool
@@ -26,6 +25,9 @@ typedef struct {
 
 #define CSTR_LEN(str) (sizeof(str) - 1)
 #define STR(str) ((Str){ str, CSTR_LEN(str) })
+
+#define PACKED __attribute__((packed))
+#define ALIGNED(n) __attribute__((aligned(n)))
 
 #define PAGE_SIZE 4096
 
@@ -118,5 +120,7 @@ typedef struct {
   uint32_t start;
   EntryType type;
 } DirEntry;
+
+#define SECTOR_SIZE 512
 
 #endif

@@ -1,13 +1,4 @@
-#include "common.h"
-
-typedef struct {
-  VirtioDevice *dev;
-  Virtq *vq;
-  uint32_t sector_capacity;
-  VirtioBlkReq request;
-  uint8_t status;
-} VirtioBlkdev;
-
+#include "virtio_blk.h"
 
 VirtioBlkdev virtio_blk_init(VirtioDevice *dev) {
   ASSERT(dev->magic == 0x74726976);
