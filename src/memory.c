@@ -12,7 +12,7 @@ paddr_t alloc_pages(uint32_t count) {
   paddr_t paddr = next_paddr;
   next_paddr += count * PAGE_SIZE;
 
-  if (next_paddr > HEAP_END) {
+  if (next_paddr > (size_t)HEAP_END) {
     PANIC("Failed to allocate %d pages: out of memory!\n", count);
   }
 

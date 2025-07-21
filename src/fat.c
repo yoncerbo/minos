@@ -127,7 +127,7 @@ DirEntry fat_find_directory_entry(FatDriver *driver, uint32_t first_directory_cl
     if (entry->attr == FAT_LFN) {
       FatLfn *lfn = (void *)entry;
       // ASSERT(name.len <= 13);
-      char buffer[14];
+      uint8_t buffer[14];
       buffer[0] = lfn->name_1[0];
       buffer[1] = lfn->name_1[1];
       buffer[2] = lfn->name_1[2];
@@ -217,7 +217,7 @@ FatDriver fat_driver_init(VirtioBlkdev *blkdev) {
 }
 
 // TODO: consider adding a separate option struct
-void fat_rw_sectors(FatDriver *driver, uint32_t first_cluster, uint32_t sectors_start, uint32_t sectors_len, char *buffer, bool is_write) {
+void fat_rw_sectors(FatDriver *driver, uint32_t first_cluster, uint32_t sectors_start, uint32_t sectors_len, uint8_t *buffer, bool is_write) {
   uint32_t start_in_clusters = sectors_start / driver->sectors_per_cluster;
   // -1 to get the last sector's cluster
   // and + 1 at the end, as it's the last cluster and we're doing < in for loop
@@ -235,7 +235,7 @@ void fat_rw_sectors(FatDriver *driver, uint32_t first_cluster, uint32_t sectors_
     uint32_t cluster_len_limit = driver->sectors_per_cluster - sectors_start_in_cluster;
     uint32_t sectors_len_in_cluster = LIMIT_UP(cluster_len_limit, sectors_len - total_sectors_read);
 
-    char *buffer_start = buffer + SECTOR_SIZE * total_sectors_read;
+    uint8_t *buffer_start = buffer + SECTOR_SIZE * total_sectors_read;
     uint32_t first_disk_sector = cluster_start_on_disk + sectors_start_in_cluster;
     virtio_blk_rw(driver->blkdev, buffer_start, first_disk_sector, sectors_len_in_cluster, is_write);
 

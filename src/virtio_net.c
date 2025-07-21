@@ -87,7 +87,7 @@ VirtioNetdev virtio_net_init(VirtioDevice *dev) {
   return netdev;
 }
 
-void virtio_net_send(VirtioNetdev *netdev, char *packet, uint32_t size) {
+void virtio_net_send(VirtioNetdev *netdev, uint8_t *packet, uint32_t size) {
   // Send completely checksumed packet
   // flags zero, gso_type = hdr_gso_none
   // the header and packet are added as one output descriptor
@@ -131,7 +131,7 @@ uint32_t virtio_net_recv(VirtioNetdev *netdev) {
   DEBUGD(elem.id);
   DEBUGD(elem.len);
 
-  VirtqDesc *desc = &netdev->rq->descs[elem.id];
+  volatile VirtqDesc *desc = &netdev->rq->descs[elem.id];
   // TODO: why the addr is zero?
   DEBUGD(desc->addr);
   // We populated the queue, so that each descriptor chain
@@ -144,7 +144,7 @@ uint32_t virtio_net_recv(VirtioNetdev *netdev) {
 
 void virtio_net_return_buffer(VirtioNetdev *netdev, uint32_t index) {
   Virtq *tq = netdev->tq;
-  tq->avail.ring[tq->avail.index++ & VIRTQ_ENTRY_NUM] = 0;
+  tq->avail.ring[tq->avail.index++ & VIRTQ_ENTRY_NUM] = index;
   // Is it needed?
   __sync_synchronize();
   netdev->dev->queue_notify = 0;

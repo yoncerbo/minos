@@ -32,7 +32,7 @@ VirtioBlkdev virtio_blk_init(VirtioDevice *dev) {
   };
 }
 
-void virtio_blk_rw(VirtioBlkdev *blkdev, char *buffer, uint32_t first_sector, uint32_t len, bool is_write) {
+void virtio_blk_rw(VirtioBlkdev *blkdev, uint8_t *buffer, uint32_t first_sector, uint32_t len, bool is_write) {
   // TODO: It should be an error
   ASSERT(first_sector + len <= blkdev->sector_capacity);
 

@@ -100,7 +100,7 @@ const int NET_SIZE_ICMP = NET_SIZE_IPV4 + sizeof(IcmpHeader);
 
 void net_packet_eth(
     uint8_t *buffer, uint16_t ether_type,
-    uint8_t sender_mac[6], uint8_t target_mac[6]
+    const uint8_t sender_mac[6], const uint8_t target_mac[6]
 ) {
   EthHeader *eth = (void *)buffer;
   if (target_mac) memcpy(eth->destination_mac, target_mac, 6);
@@ -109,7 +109,7 @@ void net_packet_eth(
 }
 
 void net_packet_arp(
-    uint8_t *buffer, uint8_t sender_mac[6], uint32_t sender_ip, uint32_t target_ip
+    uint8_t *buffer, const uint8_t sender_mac[6], uint32_t sender_ip, uint32_t target_ip
 ) { 
   net_packet_eth(buffer, 0x806, sender_mac, BROADCAST_MAC);
 
@@ -121,8 +121,8 @@ void net_packet_arp(
     .plen = 6,
     .opcode = bswap16(1),
     .target_mac = {0},
-    .sender_ip = bswap32(CLIENT_IP),
-    .target_ip = bswap32(SERVER_IP),
+    .sender_ip = bswap32(sender_ip),
+    .target_ip = bswap32(target_ip),
   };
   memcpy(arp->sender_mac, sender_mac, 6);
 }
@@ -334,8 +334,8 @@ void test_networking(VirtioNetdev *netdev) {
   virtio_net_send(netdev, buffer, NET_SIZE_DHCP);
 
   uint8_t dhcp_mac[6];
-  NetCon dhcp_server = { dhcp_mac };
-  NetCon sender = { netdev->mac };
+  NetCon dhcp_server = { dhcp_mac, 0, 0 };
+  NetCon sender = { netdev->mac, 0, 0 };
 
   {
     uint32_t index = virtio_net_recv(netdev);

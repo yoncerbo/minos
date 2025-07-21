@@ -149,10 +149,10 @@ static inline uint32_t vfs_file_size(Vfs *vfs, Fid fid) {
   return vfs->files[fid.index].size;
 }
 
-uint32_t vfs_file_read(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, char *buffer);
-uint32_t vfs_file_write(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, const char *buffer);
+// uint32_t vfs_file_read(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, char *buffer);
+// uint32_t vfs_file_write(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, const char *buffer);
 
-uint32_t vfs_file_rw_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, char *buffer, bool is_write) {
+void vfs_file_rw_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, uint8_t *buffer, bool is_write) {
   ASSERT(vfs->files[fid.index].gen == fid.gen);
   File *file = &vfs->files[fid.index];
 

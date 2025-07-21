@@ -35,7 +35,7 @@ uint32_t oct_to_bin(char *str, uint32_t size) {
 typedef struct {
   Fs fs;
   VirtioBlkdev *blkdev;
-  char buffer[512];
+  uint8_t buffer[512];
 } TarDriver;
 
 TarDriver tar_driver_init(VirtioBlkdev *blkdev) {

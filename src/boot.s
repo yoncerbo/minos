@@ -6,6 +6,7 @@
 
 .section .text.boot
 
+.global boot
 boot:
   # load stack pointer
   la sp, STACK_TOP

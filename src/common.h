@@ -65,12 +65,13 @@ extern char HEAP_START[], HEAP_END[], KERNEL_BASE[];
 #define LIMIT_UP(a, b) MIN(a, b)
 #define LIMIT_DOWN(a, b) MAX(a, b)
 
-volatile char * const UART = (char *)0x10000000;
+volatile uint8_t * const UART = (void *)0x10000000;
 
 const uint32_t VIRTIO_MMIO_START = 0x10001000;
 
 void *memcpy(void *restrict dest, const void *restrict src, size_t n) {
-  char *d = dest, *s = src;
+  char *d = dest;
+  const char *s = src;
   for (uint32_t i = 0; i < n; ++i) d[i] = s[i];
   return dest;
 }
@@ -82,7 +83,7 @@ void *memset(void *s, int c, size_t n) {
 }
 
 int strncmp(const char *s1, const char *s2, size_t n) {
-  int i = 0;
+  size_t i = 0;
   for (; i < n && s1[i] == s2[i]; ++i);
   return (uint8_t)s1[i] - (uint8_t)s2[i];
 }
