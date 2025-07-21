@@ -6,7 +6,6 @@
 #include "memory.c"
 #include "plic.c"
 #include "interrupts.c"
-#include "vfs.h"
 #include "virtio/virtio.c"
 #include "virtio/virtio_blk.c"
 #include "virtio/virtio_net.c"
@@ -15,24 +14,13 @@
 #include "fs/vfs.c"
 #include "networking.c"
 
-// TODO: setup testing
+// TODO: clean up common.c
 // TODO: setup proper memory handling and allocators
 // TODO: task system, processes
 // TODO: virtio gpu and input
 
 void kernel_main(void) {
-  // TOOD: zero the bss section
-
-  // TODO: implement proper testing in qemu,
-  // then move it there and add other stuff
-  ASSERT(sizeof(uint64_t) == 8);
-  ASSERT(sizeof(int64_t) == 8);
-  ASSERT(sizeof(uint32_t) == 4);
-  ASSERT(sizeof(int32_t) == 4);
-  ASSERT(sizeof(uint16_t) == 2);
-  ASSERT(sizeof(int16_t) == 2);
-  ASSERT(sizeof(uint8_t) == 1);
-  ASSERT(sizeof(int8_t) == 1);
+  memset(BSS_START, 0, BSS_END - BSS_START);
 
   LOG("Starting kernel...\n");
 
@@ -69,28 +57,6 @@ void kernel_main(void) {
   plic_set_threshold(0);
 
   // sbi_set_timer(0);
-
-  VirtioBlkdev blkdev = virtio_blk_init((void *)0x10001000);
-  FatDriver fat_driver = fat_driver_init(&blkdev);
-
-  VirtioBlkdev tar_blkdev = virtio_blk_init((void *)0x10002000);
-  TarDriver tar_driver = tar_driver_init(&tar_blkdev);
-
-  Vfs vfs;
-  // TODO: add path processing to those functions
-  vfs_mount(&vfs, STR("/"), &fat_driver.fs);
-  vfs_mount(&vfs, STR("/tar/"), &tar_driver.fs);
-
-  // TODO: add test and mock devices
-  // test reading first sector
-  // test reading multiple sectors, not from start
-  // also reading from the middle of the next cluster
-  // test reading multiple sectors, not from start
-  // test writing
-  // test reading more than one cluster
-
-  VirtioNetdev netdev = virtio_net_init(VIRTIO_NET);
-  net_dhcp_request(&netdev);
 
   LOG("Initialization finished\n");
   for (;;) __asm__ __volatile__("wfi");

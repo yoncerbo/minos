@@ -1,5 +1,5 @@
-#ifndef INCLUDE_DEVICES
-#define INCLUDE_DEVICES
+#ifndef INCLUDE_HARDWARE
+#define INCLUDE_HARDWARE
 
 #include "common.h"
 

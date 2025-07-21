@@ -61,6 +61,8 @@ void printf(const char *fmt, ...);
   printf(STRINGIFY(var) "=%d\n", var)
 #define DEBUGS(var) \
   printf(STRINGIFY(var) "='%s'\n", var)
+#define DEBUGX(var) \
+  printf(STRINGIFY(var) "=0x%x\n", var)
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))

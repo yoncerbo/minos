@@ -24,6 +24,7 @@ struct Vfs {
   uint8_t next_free_file;
 };
 
+// TODO: add some basic path processing
 void vfs_mount(Vfs *vfs, Str path, Fs *fs) {
   // TODO: add some path processing
   ASSERT(vfs->mounts_len < MAX_MOUNT_POINTS);
