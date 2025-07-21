@@ -100,6 +100,7 @@ typedef struct PACKED {
   uint32_t padding;
 } VirtioGpuMemEntry;
 
+// TODO: dynamic screen size
 VirtioGpu virtio_gpu_init(VirtioDevice *dev) {
   ASSERT(dev->magic == VIRTIO_MAGIC);
   ASSERT(dev->version == 1);

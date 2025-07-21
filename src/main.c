@@ -9,12 +9,12 @@
 #include "virtio/virtio.c"
 #include "virtio/virtio_blk.c"
 #include "virtio/virtio_net.c"
+#include "virtio/virtio_gpu.c"
+#include "virtio/virtio_input.c"
 #include "fs/tar.c"
 #include "fs/fat.c"
 #include "fs/vfs.c"
 #include "networking.c"
-
-#include "virtio/virtio_gpu.c"
 
 // TODO: clean up common.c
 // TODO: setup proper memory handling and allocators
@@ -60,7 +60,7 @@ void kernel_main(void) {
 
   // sbi_set_timer(0);
   
-  test_gpu();
+  test_input();
 
   LOG("Initialization finished\n");
   for (;;) __asm__ __volatile__("wfi");

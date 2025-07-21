@@ -15,6 +15,8 @@ run: build
 		-device virtio-net-device,bus=virtio-mmio-bus.2,netdev=net0 \
 		-object filter-dump,id=f1,netdev=net0,file=out/net_dump.dat \
 		-device virtio-gpu-device,bus=virtio-mmio-bus.3 \
+		-device virtio-keyboard-device,bus=virtio-mmio-bus.4 \
+		-device virtio-tablet-device,bus=virtio-mmio-bus.5 \
 
 build-tests: src/tests.c src/boot.s
 	riscv32-none-elf-gcc ${CFLAGS} -Wl,-Tsrc/kernel.ld -Wl,-Map=out/kernel.map \
