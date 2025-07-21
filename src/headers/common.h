@@ -21,7 +21,7 @@ typedef struct {
 } Str;
 
 #define CSTR_LEN(str) (sizeof(str) - 1)
-#define STR(str) ((Str){ str, CSTR_LEN(str) })
+#define STR(str) ((Str){ (str), CSTR_LEN(str) })
 
 #define PACKED __attribute__((packed))
 #define ALIGNED(n) __attribute__((aligned(n)))

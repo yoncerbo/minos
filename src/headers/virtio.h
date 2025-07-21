@@ -84,12 +84,25 @@ typedef struct PACKED {
   VirtqUsedElem ring[VIRTQ_ENTRY_NUM];
 } VirtqUsed;
 
-typedef volatile struct PACKED {
+typedef struct PACKED {
   VirtqDesc descs[VIRTQ_ENTRY_NUM];
   VirtqAvail avail;
-  VirtqUsed used ALIGNED(PAGE_SIZE);
+  volatile VirtqUsed used ALIGNED(PAGE_SIZE);
+
+  // helper variables for constructing descriptor chains
+  uint32_t desc_index;
 } Virtq;
 
 Virtq *virtq_create(VirtioDevice *dev, uint32_t index);
+inline void virtq_descf(Virtq *vq, void *addr, uint16_t len, bool is_write);
+inline void virtq_descm(Virtq *vq, void *addr, uint16_t len, bool is_write);
+inline void virtq_descl(Virtq *vq, void *addr, uint16_t len, bool is_write);
+inline void virtq_update(Virtq *vq);
+
+typedef struct {
+  void *addr;
+  uint32_t len;
+  bool is_write
+} Vdesc;
 
 #endif

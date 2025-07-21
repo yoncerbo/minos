@@ -1,14 +1,9 @@
 #include "common.h"
 #include "memory.h"
 #include "virtio.h"
+#include "virtio_gpu.h"
 
 const uint32_t PIXEL_FORMAT = 67; // RGBA
-const uint32_t DISPLAY_WIDTH = 640;
-const uint32_t DISPLAY_HEIGHT = 480;
-
-typedef struct {
-  uint8_t r, g, b, a;
-} Rgba;
 
 typedef struct PACKED {
   uint32_t events_read;
@@ -105,12 +100,6 @@ typedef struct PACKED {
   uint32_t padding;
 } VirtioGpuMemEntry;
 
-typedef struct {
-  VirtioDevice *dev;
-  Virtq *vq;
-  Virtq *cq;
-} VirtioGpu;
-
 VirtioGpu virtio_gpu_init(VirtioDevice *dev) {
   ASSERT(dev->magic == VIRTIO_MAGIC);
   ASSERT(dev->version == 1);
@@ -127,17 +116,7 @@ VirtioGpu virtio_gpu_init(VirtioDevice *dev) {
 
   dev->status |= VIRTIO_STATUS_DRIVER_OK;
 
-  // 1) resource create 2d, attach backing, framebufer doesn't have to be contigious
-  //    set scanout
-  // 2) update framebuffer and scanout
-  //  render, transfer to host, resource flush
-
-  uint8_t *buffer = (void *)alloc_pages(310);
-
-  uint32_t *fb = (void *)buffer;
-  for (uint32_t i = 0; i < DISPLAY_WIDTH * DISPLAY_HEIGHT; ++i) {
-    fb[i] = bswap32(0xffffff00);
-  }
+  uint8_t *buffer = (void *)alloc_pages(300);
 
   VirtioGpuResourceCreate2D req1 = {
     .hdr.type = VIRTIO_GPU_CMD_RESOURCE_CREATE_2D,
@@ -168,63 +147,34 @@ VirtioGpu virtio_gpu_init(VirtioDevice *dev) {
   };
   VirtioGpuCtrlHdr res3;
 
-  vq->descs[0] = (VirtqDesc){
-    .addr = (uint32_t)&req1,
-    .len = sizeof(req1),
-    .flags = VIRTQ_DESC_NEXT,
-    .next = 1,
-  };
-  vq->descs[1] = (VirtqDesc){
-    .addr = (uint32_t)&res1,
-    .len = sizeof(res1),
-    .flags = VIRTQ_DESC_WRITE,
-  };
+  virtq_descf(vq, &req1, sizeof(req1), 0);
+  virtq_descl(vq, &res1, sizeof(res1), 1);
 
-  vq->descs[2] = (VirtqDesc){
-    .addr = (uint32_t)&req2,
-    .len = sizeof(req2),
-    .flags = VIRTQ_DESC_NEXT,
-    .next = 3,
-  };
-  vq->descs[3] = (VirtqDesc){
-    .addr = (uint32_t)&ent2,
-    .len = sizeof(ent2),
-    .flags = VIRTQ_DESC_NEXT,
-    .next = 4,
-  };
-  vq->descs[4] = (VirtqDesc){
-    .addr = (uint32_t)&res2,
-    .len = sizeof(res2),
-    .flags = VIRTQ_DESC_WRITE,
-  };
+  virtq_descf(vq, &req2, sizeof(req2), 0);
+  virtq_descm(vq, &ent2, sizeof(ent2), 0);
+  virtq_descl(vq, &res2, sizeof(res2), 1);
 
-  vq->descs[5] = (VirtqDesc){
-    .addr = (uint32_t)&req3,
-    .len = sizeof(req3),
-    .flags = VIRTQ_DESC_NEXT,
-    .next = 6,
-  };
-  vq->descs[6] = (VirtqDesc){
-    .addr = (uint32_t)&res3,
-    .len = sizeof(res3),
-    .flags = VIRTQ_DESC_WRITE,
-  };
-
-  vq->avail.ring[vq->avail.index++ % VIRTQ_ENTRY_NUM] = 0;
-  vq->avail.ring[vq->avail.index++ % VIRTQ_ENTRY_NUM] = 2;
-  vq->avail.ring[vq->avail.index++ % VIRTQ_ENTRY_NUM] = 5;
+  virtq_descf(vq, &req3, sizeof(req3), 0);
+  virtq_descl(vq, &res3, sizeof(res3), 1);
 
   __sync_synchronize();
   dev->queue_notify = 0;
+  while (vq->avail.index != vq->used.index);
+  vq->desc_index = 0;
 
-  while (vq->avail.index != vq->used.index) {
-    printf("Waiting\n");
-  }
+  ASSERT(res1.type == VIRTIO_GPU_RESP_OK_NODATA);
+  ASSERT(res2.type == VIRTIO_GPU_RESP_OK_NODATA);
+  ASSERT(res3.type == VIRTIO_GPU_RESP_OK_NODATA);
 
-  DEBUGX(res1.type);
-  DEBUGX(res2.type);
-  DEBUGX(res3.type);
+  return (VirtioGpu){
+    .dev = dev,
+    .vq = vq,
+    .cq = cq,
+    .fb = (void *)buffer,
+  };
+}
 
+void virtio_gpu_flush(VirtioGpu *gpu) {
   VirtioGpuTransferToHost2D req4 = {
     .hdr.type = VIRTIO_GPU_CMD_TRANSFER_TO_HOST_2D,
     .rect.w = DISPLAY_WIDTH,
@@ -241,50 +191,32 @@ VirtioGpu virtio_gpu_init(VirtioDevice *dev) {
   };
   VirtioGpuCtrlHdr res5;
 
-  vq->descs[0] = (VirtqDesc){
-    .addr = (uint32_t)&req4,
-    .len = sizeof(req4),
-    .flags = VIRTQ_DESC_NEXT,
-    .next = 1,
-  };
-  vq->descs[1] = (VirtqDesc){
-    .addr = (uint32_t)&res4,
-    .len = sizeof(res4),
-    .flags = VIRTQ_DESC_WRITE,
-  };
+  Virtq *vq = gpu->vq;
+  virtq_descf(vq, &req4, sizeof(req4), 0);
+  virtq_descl(vq, &req4, sizeof(req4), 1);
 
-  vq->descs[2] = (VirtqDesc){
-    .addr = (uint32_t)&req5,
-    .len = sizeof(req5),
-    .flags = VIRTQ_DESC_NEXT,
-    .next = 3,
-  };
-  vq->descs[3] = (VirtqDesc){
-    .addr = (uint32_t)&res5,
-    .len = sizeof(res5),
-    .flags = VIRTQ_DESC_WRITE,
-  };
+  virtq_descf(vq, &req5, sizeof(req5), 0);
+  virtq_descl(vq, &res5, sizeof(res5), 1);
 
   vq->avail.ring[vq->avail.index++ % VIRTQ_ENTRY_NUM] = 0;
   vq->avail.ring[vq->avail.index++ % VIRTQ_ENTRY_NUM] = 2;
 
   __sync_synchronize();
-  dev->queue_notify = 0;
+  gpu->dev->queue_notify = 0;
+  while (vq->avail.index != vq->used.index);
+  vq->desc_index = 0;
 
-  while (vq->avail.index != vq->used.index) {
-    printf("Waiting\n");
-  }
-
-  DEBUGX(res4.type);
-  DEBUGX(res5.type);
-
-  return (VirtioGpu){
-    .dev = dev,
-    .vq = vq,
-    .cq = cq,
-  };
+  ASSERT(res4.type == VIRTIO_GPU_RESP_OK_NODATA);
+  ASSERT(res5.type == VIRTIO_GPU_RESP_OK_NODATA);
 }
 
 void test_gpu() {
   VirtioGpu gpu = virtio_gpu_init((void *)0x10004000);
+
+  for (uint32_t i = 0; i < DISPLAY_WIDTH * DISPLAY_HEIGHT; ++i) {
+    gpu.fb[i] = bswap32(0xff000000);
+  }
+
+  virtio_gpu_flush(&gpu);
+
 }
