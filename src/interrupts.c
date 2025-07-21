@@ -1,4 +1,5 @@
 #include "common.h"
+#include "hardware.h"
 #include "sbi.h"
 
 void report_exception(uint32_t cause, uint32_t val, uint32_t epc) {
@@ -47,6 +48,42 @@ void report_exception(uint32_t cause, uint32_t val, uint32_t epc) {
   }
 }
 
+bool is_keyboard = false;
+bool is_mouse = false;
+
+
+void handle_external_interrupt(uint32_t id) {
+  switch (id) {
+    case UART_INT: // UART
+      int ch = *UART;
+      break;
+      printf("char: '%c', %d\n", ch, ch);
+      break;
+      switch (ch) {
+        case 13:
+          putchar(10);
+          break;
+        case 127:
+          putchar(8);
+          putchar(' ');
+          putchar(8);
+          break;
+        default:
+          putchar(ch);
+      }
+      break;
+    case VIRTIO_KEYBOARD_INT:
+      // TODO: acknowledge the interrupt
+      is_keyboard = true;
+      break;
+    case VIRTIO_MOUSE_INT:
+      is_mouse = true;
+      break;
+    default:
+      PANIC("Unknown supervisor external interrupt %d", id);
+  }
+}
+
 ALIGNED(4) __attribute__((interrupt("supervisor")))
 void handle_supervisor_interrupt(void) {
   uint32_t scause, stval, sepc;
@@ -71,31 +108,7 @@ void handle_supervisor_interrupt(void) {
         break;
       case 9:
         uint32_t id = plic_claim();
-        switch (id) {
-          case 10: // UART
-            int ch = *UART;
-            break;
-            printf("char: '%c', %d\n", ch, ch);
-            break;
-            switch (ch) {
-              case 13:
-                putchar(10);
-                break;
-              case 127:
-                putchar(8);
-                putchar(' ');
-                putchar(8);
-                break;
-              default:
-                putchar(ch);
-            }
-            break;
-          case 3:
-            LOG("Network interrupt\n");
-            break;
-          default:
-            PANIC("Unknown supervisor external interrupt %d", id);
-        }
+        handle_external_interrupt(id);
         plic_complete(id);
         break;
       default:

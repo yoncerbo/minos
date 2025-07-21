@@ -89,7 +89,7 @@ uint32_t virtio_net_recv(VirtioNetdev *netdev) {
 
   uint32_t used_index = netdev->processed_requests++;
   LOG("Processing request %d\n", used_index);
-  VirtqUsedElem elem = netdev->rq->used.ring[used_index];
+  VirtqUsedElem elem = netdev->rq->used.ring[used_index % VIRTQ_ENTRY_NUM];
 
   volatile VirtqDesc *desc = &netdev->rq->descs[elem.id];
   // TODO: why the addr is zero?

@@ -15,6 +15,7 @@
 #include "fs/fat.c"
 #include "fs/vfs.c"
 #include "networking.c"
+#include "virtio_input.h"
 
 // TODO: clean up common.c
 // TODO: setup proper memory handling and allocators
@@ -55,13 +56,37 @@ void kernel_main(void) {
   uart_init();
 
   plic_enablep(UART_INT, 3);
-  plic_enablep(VIRTIO_NET_INT, 3);
+  plic_enablep(VIRTIO_KEYBOARD_INT, 3);
+  plic_enablep(VIRTIO_MOUSE_INT, 3);
   plic_set_threshold(0);
 
   // sbi_set_timer(0);
-  
-  test_input();
+
+  VirtioInput keyboard = virtio_input_init(VIRTIO_KEYBOARD);
+  VirtioInput mouse = virtio_input_init(VIRTIO_MOUSE);
 
   LOG("Initialization finished\n");
-  for (;;) __asm__ __volatile__("wfi");
+  for (;;) {
+    VirtioInputEvent ev;
+    // TODO: is it interrupt-proof enough?
+    if (is_keyboard) {
+      is_keyboard = false;
+      while (virtio_input_get(&keyboard, &ev)) {
+        DEBUGD(ev.type);
+        DEBUGD(ev.value);
+        DEBUGD(ev.code);
+        putchar(10);
+      }
+    }
+    if (is_mouse) {
+      is_mouse = false;
+      while (virtio_input_get(&mouse, &ev)) {
+        DEBUGD(ev.type);
+        DEBUGD(ev.value);
+        DEBUGD(ev.code);
+        putchar(10);
+      }
+    }
+    __asm__ __volatile__("wfi");
+  }
 }
