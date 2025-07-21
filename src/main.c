@@ -7,12 +7,12 @@
 #include "plic.c"
 #include "interrupts.c"
 #include "vfs.h"
-#include "virtio.c"
-#include "virtio_blk.c"
-#include "virtio_net.c"
-#include "tar.c"
-#include "fat.c"
-#include "vfs.c"
+#include "virtio/virtio.c"
+#include "virtio/virtio_blk.c"
+#include "virtio/virtio_net.c"
+#include "fs/tar.c"
+#include "fs/fat.c"
+#include "fs/vfs.c"
 #include "networking.c"
 
 void kernel_main(void) {
@@ -90,4 +90,3 @@ void kernel_main(void) {
   LOG("Initialization finished\n");
   for (;;) __asm__ __volatile__("wfi");
 }
-
