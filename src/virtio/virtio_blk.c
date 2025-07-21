@@ -1,7 +1,8 @@
 #include "virtio_blk.h"
+#include "virtio.h"
 
 VirtioBlkdev virtio_blk_init(VirtioDevice *dev) {
-  ASSERT(dev->magic == 0x74726976);
+  ASSERT(dev->magic == VIRTIO_MAGIC);
   ASSERT(dev->version == 1);
   ASSERT(dev->device = VIRTIO_DEVICE_BLK);
 

@@ -1,9 +1,10 @@
 #include "virtio_net.h"
+#include "virtio.h"
 
 // https://docs.oasis-open.org/virtio/virtio/v1.1/csprd01/virtio-v1.1-csprd01.html#x1-1940001
 
 VirtioNetdev virtio_net_init(VirtioDevice *dev) {
-  ASSERT(dev->magic == 0x74726976);
+  ASSERT(dev->magic == VIRTIO_MAGIC);
   ASSERT(dev->version == 1);
   ASSERT(dev->device = VIRTIO_DEVICE_NET);
 

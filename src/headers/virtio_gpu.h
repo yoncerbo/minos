@@ -1,0 +1,6 @@
+#ifndef INCLUDE_VIRTIO_GPU
+#define INCLUDE_VIRTIO_GPU
+
+
+
+#endif // !INCLUDE_VIRTIO_GPU

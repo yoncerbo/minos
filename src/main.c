@@ -14,6 +14,8 @@
 #include "fs/vfs.c"
 #include "networking.c"
 
+#include "virtio/virtio_gpu.c"
+
 // TODO: clean up common.c
 // TODO: setup proper memory handling and allocators
 // TODO: task system, processes
@@ -57,6 +59,8 @@ void kernel_main(void) {
   plic_set_threshold(0);
 
   // sbi_set_timer(0);
+  
+  test_gpu();
 
   LOG("Initialization finished\n");
   for (;;) __asm__ __volatile__("wfi");

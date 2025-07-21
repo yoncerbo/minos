@@ -6,9 +6,14 @@
 
 #include "common.h"
 
+const uint32_t VIRTIO_MAGIC = 0x74726976;
+
 typedef enum {
   VIRTIO_DEVICE_NET = 1,
   VIRTIO_DEVICE_BLK = 2,
+  VIRTIO_DEVICE_CONSOLE = 3,
+  VIRTIO_DEVICE_GPU = 16,
+  VIRTIO_DEVICE_INPUT = 18,
 } VirtioDeviceType;
 
 typedef enum {
