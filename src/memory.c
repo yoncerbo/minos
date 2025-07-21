@@ -1,11 +1,4 @@
-#include "common.h"
-
-#define SATP_SV32 (1u << 31)
-#define PAGE_V (1 << 0)
-#define PAGE_R (1 << 1)
-#define PAGE_W (1 << 2)
-#define PAGE_X (1 << 3)
-#define PAGE_U (1 << 4)
+#include "memory.h"
 
 paddr_t alloc_pages(uint32_t count) {
   static paddr_t next_paddr = (size_t)HEAP_START;

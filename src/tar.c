@@ -1,8 +1,8 @@
-#include "common.h"
+#include "tar.h"
 
 // https://wiki.osdev.org/USTAR
 
-typedef struct {
+typedef struct PACKED {
     char name[100];
     char mode[8];
     char uid[8];
@@ -20,7 +20,7 @@ typedef struct {
     char devminor[8];
     char prefix[155];
     char _padding[12];
-} __attribute__((packed)) TarHeader;
+} TarHeader;
 
 uint32_t oct_to_bin(char *str, uint32_t size) {
   uint32_t number = 0;
@@ -31,12 +31,6 @@ uint32_t oct_to_bin(char *str, uint32_t size) {
   }
   return number;
 }
-
-typedef struct {
-  Fs fs;
-  VirtioBlkdev *blkdev;
-  uint8_t buffer[512];
-} TarDriver;
 
 TarDriver tar_driver_init(VirtioBlkdev *blkdev) {
   TarDriver driver = {

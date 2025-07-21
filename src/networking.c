@@ -1,27 +1,16 @@
-#include "common.h"
+#include "networking.h"
 
 // https://wiki.qemu.org/Documentation/Networking
 // https://docs.oasis-open.org/virtio/virtio/v1.1/csprd01/virtio-v1.1-csprd01.html#x1-1940001
 
-#define IP(x, y, z, w) ((x) << 24 | (y) << 16 | (z) << 8 | (w))
-
-#define bswap16(n) __builtin_bswap16(n)
-#define bswap32(n) __builtin_bswap32(n)
-
-uint32_t CLIENT_IP = IP(10,0,2,15);
-uint32_t SERVER_IP = IP(10,0,2,2);
-
-const uint8_t BROADCAST_MAC[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-const uint32_t BROADCAT_IP = 0xffffffff;
-
-typedef struct {
+typedef struct PACKED {
   uint8_t destination_mac[6];
   uint8_t source_mac[6];
   uint16_t ether_type;
   uint8_t data[];
-} __attribute__((packed)) EthHeader;
+} EthHeader;
 
-typedef struct {
+typedef struct PACKED {
   uint16_t htype;
   uint16_t ptype;
   uint8_t hlen;
@@ -31,11 +20,11 @@ typedef struct {
   uint32_t sender_ip;
   uint8_t target_mac[6];
   uint32_t target_ip;
-} __attribute__((packed)) ArpHeader;
+} ArpHeader;
 
 // https://en.wikipedia.org/wiki/IPv4#Header
 // TODO: Can I use bit-fields?
-typedef struct {
+typedef struct PACKED {
   uint8_t version_ihl; // 4, 4 bits
   uint8_t dscp_ecn; // 6, 2 bits
   uint16_t total_length;
@@ -47,18 +36,18 @@ typedef struct {
   uint32_t source_addr;
   uint32_t destination_addr;
   uint8_t data[];
-} __attribute__((packed)) Ipv4Header;
+} Ipv4Header;
 
-typedef struct {
+typedef struct PACKED {
   uint16_t source_port;
   uint16_t destination_port;
   uint16_t length;
   uint16_t checksum;
   uint8_t data[];
-} __attribute__((packed)) UdpHeader;
+} UdpHeader;
 
 // https://en.wikipedia.org/wiki/Dynamic_Host_Configuration_Protocol#Discovery
-typedef struct {
+typedef struct PACKED {
   uint8_t operation;
   uint8_t hardware_type;
   uint8_t hardware_length;
@@ -74,22 +63,16 @@ typedef struct {
   uint8_t sname[64];
   uint8_t file[128];
   uint8_t options[312];
-} __attribute__((packed)) DhcpHeader;
+} DhcpHeader;
 
-typedef struct {
+typedef struct PACKED {
   uint8_t type;
   uint8_t code;
   uint16_t checksum;
   uint16_t id;
   uint16_t sequence;
   uint8_t payload[56];
-} __attribute__((packed)) IcmpHeader;
-
-typedef struct {
-  uint8_t *mac; 
-  uint32_t ip;
-  uint16_t port;
-} NetCon;
+} IcmpHeader;
 
 const int NET_SIZE_ETH = sizeof(EthHeader);
 const int NET_SIZE_ARP = NET_SIZE_ETH + sizeof(ArpHeader);

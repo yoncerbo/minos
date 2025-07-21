@@ -15,9 +15,6 @@ typedef long long int64_t;
 typedef unsigned long long uint64_t;
 typedef uint32_t size_t;
 
-typedef size_t paddr_t;
-typedef size_t vaddr_t;
-
 typedef struct {
   const char *ptr;
   uint32_t len;
@@ -41,6 +38,9 @@ extern char HEAP_START[], HEAP_END[], KERNEL_BASE[];
 
 #define STRINGIFY_INNER(x) #x
 #define STRINGIFY(x) STRINGIFY_INNER(x) 
+
+void putchar(char ch);
+void printf(const char *fmt, ...);
 
 #define LOG(fmt, ...) \
   printf("[LOG] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, ##__VA_ARGS__)
@@ -122,5 +122,8 @@ typedef struct {
 } DirEntry;
 
 #define SECTOR_SIZE 512
+#define bswap16(n) __builtin_bswap16(n)
+#define bswap32(n) __builtin_bswap32(n)
+
 
 #endif

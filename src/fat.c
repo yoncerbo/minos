@@ -1,8 +1,8 @@
-#include "common.h"
+#include "fat.h"
 
 // https://wiki.osdev.org/FAT
 
-typedef struct {
+typedef struct PACKED {
   uint8_t bootjmp[3];
   uint8_t oem_name[8];
   uint16_t bytes_per_sector;
@@ -18,9 +18,9 @@ typedef struct {
   uint32_t hidden_sector_count;
   uint32_t total_sectors_32;
   uint8_t extended_section[54];
-} __attribute__((packed)) fat_BS_t;
+} fat_BS_t;
 
-typedef struct {
+typedef struct PACKED {
   uint32_t table_size_32;
   uint16_t extended_flags;
   uint16_t fat_version;
@@ -34,7 +34,7 @@ typedef struct {
   uint32_t volume_id;
   uint8_t volume_label[11]; 
   uint8_t fat_type_label[8];
-} __attribute__((packed)) fat_extBS_32;
+} fat_extBS_32;
 
 typedef enum {
   FAT_READ_ONLY = 0x01,
@@ -46,7 +46,7 @@ typedef enum {
   FAT_LFN = 0x0f,
 } FatAttr;
 
-typedef struct {
+typedef struct PACKED {
   uint8_t name[8];
   uint8_t ext[3];
   uint8_t attr;
@@ -64,9 +64,9 @@ typedef struct {
   uint16_t mdate;
   uint16_t cluster_low;
   uint32_t size;
-} __attribute__((packed)) FatEntry;
+} FatEntry;
 
-typedef struct {
+typedef struct PACKED {
   uint8_t order;
   uint16_t name_1[5];
   uint8_t attr;
@@ -75,21 +75,7 @@ typedef struct {
   uint16_t name_2[6];
   uint8_t _reserved[2];
   uint16_t name_3[2];
-} __attribute__((packed)) FatLfn;
-
-typedef struct {
-  Fs fs; // every file system driver needs this header
-  uint8_t *buffer;
-  VirtioBlkdev *blkdev;
-  uint32_t first_data_sector;
-  uint32_t first_fat_sector;
-  uint32_t root_cluster;
-  uint8_t sectors_per_cluster;
-} FatDriver;
-
-static inline int fat_first_sector_in_cluster(const FatDriver *driver, uint32_t cluster) {
-  return ((cluster - 2) * driver->sectors_per_cluster) + driver->first_data_sector;
-}
+} FatLfn;
 
 typedef enum {
   FAT_ENTRY_FREE = 0,
@@ -97,6 +83,10 @@ typedef enum {
   FAT_ENTRY_BAD = 0x0ffffff7,
   FAT_ENTRY_END = 0x0ffffff8, // if >= then end of chain link
 } FatTableEntry;
+
+static inline int fat_first_sector_in_cluster(const FatDriver *driver, uint32_t cluster) {
+  return ((cluster - 2) * driver->sectors_per_cluster) + driver->first_data_sector;
+}
 
 // note: uses buffer in dat to read fat table from disk
 FatTableEntry fat_next_cluster(FatDriver *driver, uint32_t cluster) {

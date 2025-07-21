@@ -1,12 +1,7 @@
-#include "common.h"
+#include "vfs.h"
 
 #define MAX_MOUNT_POINTS 256
 #define MAX_FILES 256
-
-typedef struct {
-  uint16_t gen;
-  uint16_t index;
-} Fid;
 
 typedef struct {
   char name[32];
@@ -22,12 +17,12 @@ typedef struct {
   Fs *fs;
 } VfsMount;
 
-typedef struct {
+struct Vfs {
   VfsMount mounts[256]; // swap-back array
   File files[256];
   uint8_t mounts_len;
   uint8_t next_free_file;
-} Vfs;
+};
 
 void vfs_mount(Vfs *vfs, Str path, Fs *fs) {
   // TODO: add some path processing
@@ -43,9 +38,9 @@ void vfs_mount(Vfs *vfs, Str path, Fs *fs) {
 typedef struct {
   Str subpath;
   Fs *fs;
-} _MatchResult;
+} MatchResult;
 
-_MatchResult _vfs_mount_match(Vfs *vfs, Str path) {
+MatchResult vfs_mount_match(Vfs *vfs, Str path) {
   uint32_t longest_match = MAX_MOUNT_POINTS;
   uint32_t matching = 0;
   for (uint32_t i = 0; i <  vfs->mounts_len; ++i) {
@@ -62,7 +57,7 @@ _MatchResult _vfs_mount_match(Vfs *vfs, Str path) {
     longest_match = i;
   }
   if (path.ptr[matching] == '/') matching++;
-  return (_MatchResult){
+  return (MatchResult){
     .subpath = (Str){ &path.ptr[matching], path.len - matching },
     .fs = longest_match == MAX_MOUNT_POINTS ? 0 : vfs->mounts[longest_match].fs,
   };
@@ -71,7 +66,7 @@ _MatchResult _vfs_mount_match(Vfs *vfs, Str path) {
 Fid vfs_fopen(Vfs *vfs, Str path) {
   if (path.ptr[path.len - 1] == '/') path.len--;
   // TODO: first, check if the file is already open
-  _MatchResult match = _vfs_mount_match(vfs, path);
+  MatchResult match = vfs_mount_match(vfs, path);
   ASSERT(match.fs != 0);
 
   // TODO: clean up this code
@@ -144,13 +139,10 @@ void vfs_fclose(Vfs *vfs, Fid fid) {
   vfs->next_free_file = fid.index;
 }
 
-static inline uint32_t vfs_file_size(Vfs *vfs, Fid fid) {
+extern inline uint32_t vfs_fsize(Vfs *vfs, Fid fid) {
   ASSERT(vfs->files[fid.index].gen == fid.gen);
   return vfs->files[fid.index].size;
 }
-
-// uint32_t vfs_file_read(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, char *buffer);
-// uint32_t vfs_file_write(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, const char *buffer);
 
 void vfs_file_rw_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, uint8_t *buffer, bool is_write) {
   ASSERT(vfs->files[fid.index].gen == fid.gen);
@@ -171,8 +163,10 @@ void vfs_file_rw_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, uint8_
 
 }
 
-uint32_t vfs_file_read_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, char *buffer);
-uint32_t vfs_file_write_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, const char *buffer);
+// uint32_t vfs_file_read(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, char *buffer);
+// uint32_t vfs_file_write(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, const char *buffer);
+// uint32_t vfs_file_read_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, char *buffer);
+// uint32_t vfs_file_write_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, const char *buffer);
 
 // Ideas:
 // different open modes
