@@ -194,7 +194,7 @@ void virtio_gpu_flush(VirtioGpu *gpu) {
 
   Virtq *vq = gpu->vq;
   virtq_descf(vq, &req4, sizeof(req4), 0);
-  virtq_descl(vq, &req4, sizeof(req4), 1);
+  virtq_descl(vq, &res4, sizeof(res4), 1);
 
   virtq_descf(vq, &req5, sizeof(req5), 0);
   virtq_descl(vq, &res5, sizeof(res5), 1);
