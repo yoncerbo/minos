@@ -40,13 +40,13 @@ VirtioInput virtio_input_init(VirtioDevice *dev) {
   };
 }
 
-bool virtio_input_get(VirtioInput *input, VirtioInputEvent *ev) {
+bool virtio_input_get(VirtioInput *input, VirtioInputEvent *ev_out) {
   Virtq *vq = input->eq;
   if (vq->used.index <= input->processed) return false;
 
   VirtqUsedElem elem = vq->used.ring[input->processed++ % VIRTQ_ENTRY_NUM];
   ASSERT(elem.len == sizeof(VirtioInputEvent));
-  *ev = input->events[elem.id];
+  *ev_out = input->events[elem.id];
 
   vq->avail.ring[vq->avail.index++ & VIRTQ_ENTRY_NUM] = elem.id;
   __sync_synchronize();

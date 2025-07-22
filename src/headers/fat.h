@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "virtio_blk.h"
+#include "vfs.h"
 
 typedef struct {
   Fs fs; // every file system driver needs this header

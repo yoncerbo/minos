@@ -1,4 +1,5 @@
 #include "fat.h"
+#include "vfs.h"
 
 // https://wiki.osdev.org/FAT
 

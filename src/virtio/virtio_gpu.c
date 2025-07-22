@@ -109,7 +109,6 @@ VirtioGpu virtio_gpu_init(VirtioDevice *dev) {
   dev->status = 0;
   dev->status |= VIRTIO_STATUS_ACK;
   dev->status |= VIRTIO_STATUS_DRIVER;
-  dev->guest_features = VIRTIO_NET_F_MAC;
   dev->status |= VIRTIO_STATUS_FEAT_OK;
 
   Virtq *vq = virtq_create(dev, 0);
@@ -176,48 +175,34 @@ VirtioGpu virtio_gpu_init(VirtioDevice *dev) {
 }
 
 void virtio_gpu_flush(VirtioGpu *gpu) {
-  VirtioGpuTransferToHost2D req4 = {
+  VirtioGpuTransferToHost2D req1 = {
     .hdr.type = VIRTIO_GPU_CMD_TRANSFER_TO_HOST_2D,
     .rect.w = DISPLAY_WIDTH,
     .rect.h = DISPLAY_HEIGHT,
     .resource_id = 1,
   };
-  VirtioGpuCtrlHdr res4 = {0};
+  VirtioGpuCtrlHdr res1 = {0};
 
-  VirtioGpuResourceFlush req5 = {
+  VirtioGpuResourceFlush req2 = {
     .hdr.type = VIRTIO_GPU_CMD_RESOURCE_FLUSH,
     .rect.w = DISPLAY_WIDTH,
     .rect.h = DISPLAY_HEIGHT,
     .resource_id = 1,
   };
-  VirtioGpuCtrlHdr res5 = {0};
+  VirtioGpuCtrlHdr res2 = {0};
 
   Virtq *vq = gpu->vq;
-  virtq_descf(vq, &req4, sizeof(req4), 0);
-  virtq_descl(vq, &res4, sizeof(res4), 1);
+  virtq_descf(vq, &req1, sizeof(req1), 0);
+  virtq_descl(vq, &res1, sizeof(res1), 1);
 
-  virtq_descf(vq, &req5, sizeof(req5), 0);
-  virtq_descl(vq, &res5, sizeof(res5), 1);
-
-  vq->avail.ring[vq->avail.index++ % VIRTQ_ENTRY_NUM] = 0;
-  vq->avail.ring[vq->avail.index++ % VIRTQ_ENTRY_NUM] = 2;
+  virtq_descf(vq, &req2, sizeof(req2), 0);
+  virtq_descl(vq, &res2, sizeof(res2), 1);
 
   __sync_synchronize();
   gpu->dev->queue_notify = 0;
   while (vq->avail.index != vq->used.index);
   vq->desc_index = 0;
 
-  ASSERT(res4.type == VIRTIO_GPU_RESP_OK_NODATA);
-  ASSERT(res5.type == VIRTIO_GPU_RESP_OK_NODATA);
-}
-
-void test_gpu() {
-  VirtioGpu gpu = virtio_gpu_init((void *)0x10004000);
-
-  for (uint32_t i = 0; i < DISPLAY_WIDTH * DISPLAY_HEIGHT; ++i) {
-    gpu.fb[i] = bswap32(0xff000000);
-  }
-
-  virtio_gpu_flush(&gpu);
-
+  ASSERT(res1.type == VIRTIO_GPU_RESP_OK_NODATA);
+  ASSERT(res2.type == VIRTIO_GPU_RESP_OK_NODATA);
 }

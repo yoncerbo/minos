@@ -1,4 +1,5 @@
 #include "tar.h"
+#include "vfs.h"
 
 // https://wiki.osdev.org/USTAR
 

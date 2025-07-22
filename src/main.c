@@ -1,5 +1,5 @@
 
-#include "common.h"
+#include "common.c"
 #include "hardware.h"
 #include "memory.h"
 #include "uart.c"
@@ -19,7 +19,6 @@
 #include "virtio_input.h"
 #include "drawing.c"
 
-// TODO: clean up common.c
 // TODO: setup proper memory handling and allocators
 // TODO: task system, processes
 // TODO: virtio gpu and input
