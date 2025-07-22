@@ -1,6 +1,7 @@
 
 #include "common.h"
 #include "hardware.h"
+#include "memory.h"
 #include "uart.c"
 #include "print.c"
 #include "memory.c"
