@@ -17,6 +17,7 @@
 #include "fs/vfs.c"
 #include "networking.c"
 #include "virtio_input.h"
+#include "drawing.c"
 
 // TODO: clean up common.c
 // TODO: setup proper memory handling and allocators
@@ -65,6 +66,17 @@ void kernel_main(void) {
 
   VirtioInput keyboard = virtio_input_init(VIRTIO_KEYBOARD);
   VirtioInput mouse = virtio_input_init(VIRTIO_MOUSE);
+
+  VirtioGpu gpu = virtio_gpu_init(VIRTIO_GPU);
+  for (uint32_t i = 0; i < DISPLAY_WIDTH * DISPLAY_HEIGHT; ++i) {
+    gpu.fb[i] = bswap32(0x333333ff);
+  }
+
+  Str str = STR("Hello, World!");
+  draw_chars(gpu.fb, 50, 50, WHITE, str.ptr, str.len);
+  draw_chars(gpu.fb, 50, 62, WHITE, "Some more strings", 50);
+
+  virtio_gpu_flush(&gpu);
 
   LOG("Initialization finished\n");
   for (;;) {

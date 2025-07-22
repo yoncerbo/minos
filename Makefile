@@ -6,7 +6,6 @@ build: src/main.c src/boot.s
 
 run: build
 	qemu-system-riscv32 -machine virt -bios default -kernel out/kernel.elf \
-		-nographic \
 		-serial mon:stdio --no-reboot \
 		-drive id=drive0,file=fat.fs,format=raw,if=none \
 		-device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0 \
