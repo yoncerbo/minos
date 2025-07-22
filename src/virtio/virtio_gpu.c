@@ -126,7 +126,7 @@ VirtioGpu virtio_gpu_init(VirtioDevice *dev) {
     .width = DISPLAY_WIDTH,
     .height = DISPLAY_HEIGHT,
   };
-  VirtioGpuCtrlHdr res1;
+  VirtioGpuCtrlHdr res1 = {0};
 
   VirtioGpuResourceAttachBacking req2 = {
     .hdr.type = VIRTIO_GPU_CMD_RESOURCE_ATTACH_BACKING,
@@ -137,7 +137,7 @@ VirtioGpu virtio_gpu_init(VirtioDevice *dev) {
     .addr = (uint32_t)buffer,
     .length = DISPLAY_WIDTH * DISPLAY_HEIGHT * 4,
   };
-  VirtioGpuCtrlHdr res2;
+  VirtioGpuCtrlHdr res2 = {0};
 
   VirtioGpuSetScanout req3 = {
     .hdr.type = VIRTIO_GPU_CMD_SET_SCANOUT,
@@ -146,7 +146,7 @@ VirtioGpu virtio_gpu_init(VirtioDevice *dev) {
     .resource_id = 1,
     .scanout_id = 0,
   };
-  VirtioGpuCtrlHdr res3;
+  VirtioGpuCtrlHdr res3 = {0};
 
   virtq_descf(vq, &req1, sizeof(req1), 0);
   virtq_descl(vq, &res1, sizeof(res1), 1);
@@ -182,7 +182,7 @@ void virtio_gpu_flush(VirtioGpu *gpu) {
     .rect.h = DISPLAY_HEIGHT,
     .resource_id = 1,
   };
-  VirtioGpuCtrlHdr res4;
+  VirtioGpuCtrlHdr res4 = {0};
 
   VirtioGpuResourceFlush req5 = {
     .hdr.type = VIRTIO_GPU_CMD_RESOURCE_FLUSH,
@@ -190,7 +190,7 @@ void virtio_gpu_flush(VirtioGpu *gpu) {
     .rect.h = DISPLAY_HEIGHT,
     .resource_id = 1,
   };
-  VirtioGpuCtrlHdr res5;
+  VirtioGpuCtrlHdr res5 = {0};
 
   Virtq *vq = gpu->vq;
   virtq_descf(vq, &req4, sizeof(req4), 0);
