@@ -9,14 +9,16 @@ run: build
 		-serial mon:stdio --no-reboot \
 		-drive id=drive0,file=fat.fs,format=raw,if=none \
 		-device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0 \
-		-drive id=drive1,file=disk.tar,format=raw,if=none \
+		-drive id=drive1,file=file.txt,format=raw,if=none,copy-on-read=off \
 		-device virtio-blk-device,drive=drive1,bus=virtio-mmio-bus.1 \
 		-netdev user,id=net0 \
 		-device virtio-net-device,bus=virtio-mmio-bus.2,netdev=net0 \
 		-object filter-dump,id=f1,netdev=net0,file=out/net_dump.dat \
-		-device virtio-gpu-device,bus=virtio-mmio-bus.3 \
 		-device virtio-keyboard-device,bus=virtio-mmio-bus.4 \
 		-device virtio-tablet-device,bus=virtio-mmio-bus.5 \
+		-audio id=audiodev0,driver=sdl,model=virtio \
+		-device virtio-gpu-device,bus=virtio-mmio-bus.3 \
+		# -device virtio-sound-device,bus=virtio-mmio-bus.6,audiodev=audiodev0 \
 
 build-tests: src/tests.c src/boot.s
 	riscv32-none-elf-gcc ${CFLAGS} -Wl,-Tsrc/kernel.ld -Wl,-Map=out/kernel.map \

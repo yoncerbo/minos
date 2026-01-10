@@ -34,14 +34,14 @@ VirtioInput virtio_input_init(VirtioDevice *dev) {
 
   return (VirtioInput){
     .dev = dev,
-    .eq = eq,
-    .sq = sq,
+    .event_queue = eq,
+    .status_queue = sq,
     .events = (void *)buffer,
   };
 }
 
 bool virtio_input_get(VirtioInput *input, VirtioInputEvent *ev_out) {
-  Virtq *vq = input->eq;
+  Virtq *vq = input->event_queue;
   if (vq->used.index <= input->processed) return false;
 
   VirtqUsedElem elem = vq->used.ring[input->processed++ % VIRTQ_ENTRY_NUM];

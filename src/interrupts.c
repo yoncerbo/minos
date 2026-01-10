@@ -1,6 +1,7 @@
 #include "common.h"
 #include "hardware.h"
 #include "sbi.h"
+#include "virtio.h"
 
 void report_exception(uint32_t cause, uint32_t val, uint32_t epc) {
   switch (cause) {
@@ -48,39 +49,33 @@ void report_exception(uint32_t cause, uint32_t val, uint32_t epc) {
   }
 }
 
-bool is_keyboard = false;
-bool is_mouse = false;
-
-
 void handle_external_interrupt(uint32_t id) {
-  switch (id) {
-    case UART_INT: // UART
-      int ch = *UART;
-      break;
-      printf("char: '%c', %d\n", ch, ch);
-      break;
-      switch (ch) {
-        case 13:
-          putchar(10);
-          break;
-        case 127:
-          putchar(8);
-          putchar(' ');
-          putchar(8);
-          break;
-        default:
-          putchar(ch);
-      }
-      break;
-    case VIRTIO_KEYBOARD_INT:
-      // TODO: acknowledge the interrupt
-      is_keyboard = true;
-      break;
-    case VIRTIO_MOUSE_INT:
-      is_mouse = true;
-      break;
-    default:
-      PANIC("Unknown supervisor external interrupt %d", id);
+  if ((id - VIRTIO_INTERRUPT_START) < VIRTIO_COUNT) {
+    VirtioDevice *dev = (void *)(VIRTIO_MMIO_START + id * 0x1000);
+    uint32_t status = dev->interrupt_status;
+    // TODO: Devices specific interrupt handling
+    switch (dev->device) {
+      default: break;
+    }
+    dev->interrupt_ack = status;
+    return;
+  } else if (id == UART_INT) {
+    int ch = *UART;
+    printf("char: '%c', %d\n", ch, ch);
+    switch (ch) {
+      case 13:
+        putchar(10);
+        break;
+      case 127:
+        putchar(8);
+        putchar(' ');
+        putchar(8);
+        break;
+      default:
+        putchar(ch);
+    }
+  } else {
+    PANIC("Unknown supervisor external interrupt %d", id);
   }
 }
 

@@ -1,12 +1,15 @@
 
 #include "common.c"
+#include "common.h"
 #include "hardware.h"
 #include "memory.h"
+#include "plic.h"
 #include "uart.c"
 #include "print.c"
 #include "memory.c"
 #include "plic.c"
 #include "interrupts.c"
+#include "virtio.h"
 #include "virtio/virtio.c"
 #include "virtio/virtio_blk.c"
 #include "virtio/virtio_net.c"
@@ -16,6 +19,8 @@
 #include "fs/fat.c"
 #include "fs/vfs.c"
 #include "networking.c"
+#include "virtio_blk.h"
+#include "virtio_gpu.h"
 #include "virtio_input.h"
 #include "drawing.c"
 
@@ -25,6 +30,7 @@
 
 void kernel_main(void) {
   memset(BSS_START, 0, BSS_END - BSS_START);
+  uart_init();
 
   LOG("Starting kernel...\n");
 
@@ -54,49 +60,65 @@ void kernel_main(void) {
       : [satp] "r" (SATP_SV32 | ((uint32_t)page_table / PAGE_SIZE))
   );
 
-  uart_init();
-
   plic_enablep(UART_INT, 3);
-  plic_enablep(VIRTIO_KEYBOARD_INT, 3);
-  plic_enablep(VIRTIO_MOUSE_INT, 3);
+
+#define MAX_INPUT_DEVICES 8
+  static VirtioInput input_devices[MAX_INPUT_DEVICES] = {0};
+  uint32_t input_devices_len = 0;
+
+  VirtioGpu gpu = {0};
+
+  // TODO: Automatic virtio device detection and handling
+  for (uint32_t i = 0; i < VIRTIO_COUNT; ++i) {
+    uint32_t dev_addr = VIRTIO_MMIO_START + i * 0x1000;
+    VirtioDevice *dev = (void *)dev_addr;
+    if (dev->magic != VIRTIO_MAGIC) continue;
+    if (dev->version != 1) {
+      LOG("Virtio device with uknown version %d, at address 0x%x\n", dev->version, dev_addr);
+      continue;
+    }
+    switch (dev->device) {
+      case VIRTIO_DEVICE_NONE: {
+        continue;
+      } break;
+      case VIRTIO_DEVICE_INPUT: {
+        // TODO: Quering the device information
+        ASSERT(input_devices_len < MAX_INPUT_DEVICES);
+        input_devices[input_devices_len++] = virtio_input_init(dev);
+        plic_enablep(VIRTIO_INTERRUPT_START + i, 3);
+      } break;
+      case VIRTIO_DEVICE_GPU: {
+        ASSERT(gpu.dev == NULL);
+        gpu = virtio_gpu_init(dev);
+        plic_enablep(VIRTIO_INTERRUPT_START + i, 3);
+      } break;
+      default: {
+        LOG("Unknown virtio device type %d, at address 0x%x\n", dev->device, dev_addr);
+      } break;
+    }
+  }
   plic_set_threshold(0);
 
   // sbi_set_timer(0);
 
-  VirtioInput keyboard = virtio_input_init(VIRTIO_KEYBOARD);
-  VirtioInput mouse = virtio_input_init(VIRTIO_MOUSE);
+  if (gpu.dev) {
+    for (uint32_t i = 0; i < DISPLAY_WIDTH * DISPLAY_HEIGHT; ++i) {
+      gpu.fb[i] = bswap32(0x333333ff);
+    }
 
-  VirtioGpu gpu = virtio_gpu_init(VIRTIO_GPU);
-  for (uint32_t i = 0; i < DISPLAY_WIDTH * DISPLAY_HEIGHT; ++i) {
-    gpu.fb[i] = bswap32(0x333333ff);
+    Str str = STR("Hello, World!");
+    draw_chars(gpu.fb, 50, 50, WHITE, str.ptr, str.len);
+    draw_chars(gpu.fb, 50, 62, WHITE, "Some more strings", 50);
+
+    virtio_gpu_flush(&gpu);
   }
-
-  Str str = STR("Hello, World!");
-  draw_chars(gpu.fb, 50, 50, WHITE, str.ptr, str.len);
-  draw_chars(gpu.fb, 50, 62, WHITE, "Some more strings", 50);
-
-  virtio_gpu_flush(&gpu);
 
   LOG("Initialization finished\n");
   for (;;) {
-    VirtioInputEvent ev;
-    // TODO: is it interrupt-proof enough?
-    if (is_keyboard) {
-      is_keyboard = false;
-      while (virtio_input_get(&keyboard, &ev)) {
-        DEBUGD(ev.type);
-        DEBUGD(ev.value);
-        DEBUGD(ev.code);
-        putchar(10);
-      }
-    }
-    if (is_mouse) {
-      is_mouse = false;
-      while (virtio_input_get(&mouse, &ev)) {
-        DEBUGD(ev.type);
-        DEBUGD(ev.value);
-        DEBUGD(ev.code);
-        putchar(10);
+    for (uint32_t i = 0; i < input_devices_len; ++i) {
+      VirtioInputEvent event;
+      while (virtio_input_get(&input_devices[i], &event)) {
+        // TODO: Input handling
       }
     }
     __asm__ __volatile__("wfi");

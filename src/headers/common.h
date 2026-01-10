@@ -20,6 +20,7 @@ typedef struct {
   uint32_t len;
 } Str;
 
+#define NULL 0
 #define true 1
 #define false 0
 #define PAGE_SIZE 4096

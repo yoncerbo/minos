@@ -12,8 +12,8 @@ typedef struct PACKED {
 
 typedef struct {
   VirtioDevice *dev;
-  Virtq *eq;
-  Virtq *sq;
+  Virtq *event_queue;
+  Virtq *status_queue;
   VirtioInputEvent *events;
   uint16_t processed;
 } VirtioInput;
