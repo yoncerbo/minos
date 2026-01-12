@@ -27,7 +27,6 @@ typedef struct {
 #define true 1
 #define false 0
 #define PAGE_SIZE 4096
-#define SECTOR_SIZE 512
 
 #define PACKED __attribute__((packed))
 #define ALIGNED(n) __attribute__((aligned(n)))
@@ -97,10 +96,13 @@ void draw_char(Surface *surface, int x, int y, uint32_t color, uint8_t character
 void draw_line(Surface *surface, int x, int y, uint32_t color, const char *str, uint32_t limit);
 
 #include "interfaces/gpu.h"
+#include "interfaces/blk.h"
 
 // src/kernel.c
 typedef struct {
   Gpu *gpu;
+  BlkDev *blk_devices;
+  uint32_t blk_devices_count;
 } Hardware;
 void kernel_init(Hardware *hw);
 void kernel_update(Hardware *hw);

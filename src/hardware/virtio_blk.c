@@ -1,4 +1,5 @@
 #include "virtio_blk.h"
+#include "interfaces/blk.h"
 #include "virtio.h"
 
 VirtioBlkdev virtio_blk_init(VirtioDevice *dev) {
@@ -60,4 +61,8 @@ void virtio_blk_rw(VirtioBlkdev *blkdev, uint8_t *buffer, uint32_t first_sector,
 
   // TODO: It should be an error
   ASSERT(blkdev->status == 0);
+}
+
+void blk_v1_read_write_sectors(BlkDev *blkdev, uint8_t *buffer, uint32_t first_sector, uint32_t len, BlkDevFlags flags) {
+  virtio_blk_rw(blkdev, buffer, first_sector, len, flags);
 }
