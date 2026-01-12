@@ -4,6 +4,8 @@
 extern char BSS_START[], BSS_END[], STACK_TOP[];
 extern char HEAP_START[], HEAP_END[], KERNEL_BASE[];
 
+#include "input_codes.h"
+
 typedef _Bool bool;
 typedef unsigned char uint8_t;
 typedef char int8_t;
@@ -44,8 +46,8 @@ typedef struct {
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define LIMIT_UP(a, b) MIN(a, b)
-#define LIMIT_DOWN(a, b) MAX(a, b)
+#define UPPER_BOUND(a, b) MIN(a, b)
+#define LOWER_BOUND(a, b) MAX(a, b)
 
 #define DEBUGD(var) \
   printf(STRINGIFY(var) "=%d\n", var)
@@ -97,12 +99,16 @@ void draw_line(Surface *surface, int x, int y, uint32_t color, const char *str, 
 
 #include "interfaces/gpu.h"
 #include "interfaces/blk.h"
+#include "interfaces/input.h"
 
 // src/kernel.c
 typedef struct {
   Gpu *gpu;
   BlkDev *blk_devices;
+  InputDev *input_devices;
   uint32_t blk_devices_count;
+  uint32_t input_devices_count;
+  
 } Hardware;
 void kernel_init(Hardware *hw);
 void kernel_update(Hardware *hw);

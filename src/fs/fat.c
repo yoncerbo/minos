@@ -1,4 +1,5 @@
 #include "fat.h"
+#include "common.h"
 #include "vfs.h"
 
 // https://wiki.osdev.org/FAT
@@ -224,7 +225,7 @@ void fat_rw_sectors(FatDriver *driver, uint32_t first_cluster, uint32_t sectors_
   for (; i < end_in_clusters; ++i) {
     uint32_t cluster_start_on_disk = fat_first_sector_in_cluster(driver, cluster);
     uint32_t cluster_len_limit = driver->sectors_per_cluster - sectors_start_in_cluster;
-    uint32_t sectors_len_in_cluster = LIMIT_UP(cluster_len_limit, sectors_len - total_sectors_read);
+    uint32_t sectors_len_in_cluster = UPPER_BOUND(cluster_len_limit, sectors_len - total_sectors_read);
 
     uint8_t *buffer_start = buffer + SECTOR_SIZE * total_sectors_read;
     uint32_t first_disk_sector = cluster_start_on_disk + sectors_start_in_cluster;

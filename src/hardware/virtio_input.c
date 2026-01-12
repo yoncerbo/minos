@@ -1,6 +1,7 @@
 #include "common.h"
 #include "virtio_input.h"
 #include "hardware.h"
+#include "interfaces/input.h"
 #include "memory.h"
 #include "virtio.h"
 
@@ -21,8 +22,8 @@ VirtioInput virtio_input_init(VirtioDevice *dev) {
 
   for (uint32_t i = 0; i < 16; ++i) {
     eq->descs[i] = (VirtqDesc){
-      .addr = (uint32_t)buffer + sizeof(VirtioInputEvent) * i,
-      .len = sizeof(VirtioInputEvent),
+      .addr = (uint32_t)buffer + sizeof(InputEvent) * i,
+      .len = sizeof(InputEvent),
       .flags = VIRTQ_DESC_WRITE,
     };
     eq->avail.ring[i] = i;
@@ -40,16 +41,21 @@ VirtioInput virtio_input_init(VirtioDevice *dev) {
   };
 }
 
-bool virtio_input_get(VirtioInput *input, VirtioInputEvent *ev_out) {
-  Virtq *vq = input->event_queue;
-  if (vq->used.index <= input->processed) return false;
+uint32_t input_v1_read_events(InputDev *dev, InputEvent *out_events, uint32_t event_limit) {
+  Virtq *vq = dev->event_queue;
+  uint32_t available_events = vq->used.index - dev->processed;
+  if (available_events <= 0) return 0;
 
-  VirtqUsedElem elem = vq->used.ring[input->processed++ % VIRTQ_ENTRY_NUM];
-  ASSERT(elem.len == sizeof(VirtioInputEvent));
-  *ev_out = input->events[elem.id];
+  uint32_t events_to_write = UPPER_BOUND(available_events, event_limit);
+  for (uint32_t i = 0; i < events_to_write; ++i) {
+    VirtqUsedElem elem = vq->used.ring[dev->processed++ % VIRTQ_ENTRY_NUM];
+    // ASSERT(elem.len == sizeof(InputEvent));
+    out_events[i] = dev->events[elem.id];
+    vq->avail.ring[vq->avail.index++ % VIRTQ_ENTRY_NUM] = elem.id;
+  }
 
-  vq->avail.ring[vq->avail.index++ & VIRTQ_ENTRY_NUM] = elem.id;
   __sync_synchronize();
-  input->dev->queue_notify = 0;
-  return true;
+  dev->dev->queue_notify = 0;
+  return events_to_write;
 }
+
