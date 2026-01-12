@@ -4,9 +4,9 @@
 #include "common.h"
 
 // TODO: Rename it to GpuDev
-typedef struct Gpu Gpu;
+typedef struct GpuDev GpuDev;
 
-void gpu_v1_get_surface(Gpu *gpu, Surface *out_surface);
-void gpu_v1_flush(Gpu *gpu);
+void gpu_v1_get_surface(GpuDev *gpu, Surface *out_surface);
+void gpu_v1_flush(GpuDev *gpu);
 
 #endif

@@ -1,10 +1,6 @@
 #include "common.h"
-#include "virtio_input.h"
 #include "interfaces/input.h"
-#include "memory.h"
 #include "virtio.h"
-
-#include "hardware.h"
 
 enum {
   VIRTIO_INPUT_CFG_ID_NAME = 1,

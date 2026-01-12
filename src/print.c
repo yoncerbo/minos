@@ -1,5 +1,4 @@
 #include "common.h"
-#include "hardware.h"
 
 void putchar(char ch) {
   *UART = ch;

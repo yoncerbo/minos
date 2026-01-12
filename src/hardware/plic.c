@@ -1,4 +1,4 @@
-#include "plic.h"
+#include "common.h"
 
 // https://9p.io/sources/contrib/geoff/riscv/riscv-plic.pdf
 // Chapter 3. Memory Map

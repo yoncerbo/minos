@@ -40,4 +40,27 @@ void vfs_fclose(Vfs *vfs, Fid fid);
 void vfs_file_rw_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, uint8_t *buffer, bool is_write);
 inline uint32_t vfs_fsize(Vfs *vfs, Fid fid);
 
+typedef struct {
+  Fs fs; // every file system driver needs this header
+  uint8_t *buffer;
+  VirtioBlkdev *blkdev;
+  uint32_t first_data_sector;
+  uint32_t first_fat_sector;
+  uint32_t root_cluster;
+  uint8_t sectors_per_cluster;
+} FatDriver;
+
+FatDriver fat_driver_init(VirtioBlkdev *blkdev);
+DirEntry fat_find_directory_entry(FatDriver *driver, uint32_t first_directory_cluster, Str name);
+void fat_rw_sectors(FatDriver *driver, uint32_t first_cluster, uint32_t sectors_start, uint32_t sectors_len, uint8_t *buffer, bool is_write);
+
+typedef struct {
+  Fs fs;
+  VirtioBlkdev *blkdev;
+  uint8_t buffer[512];
+} TarDriver;
+
+TarDriver tar_driver_init(VirtioBlkdev *blkdev);
+DirEntry tar_find_file(TarDriver *driver, Str name);
+
 #endif

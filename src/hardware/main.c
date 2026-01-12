@@ -1,13 +1,8 @@
 
 #include "../common.c"
 #include "common.h"
-#include "hardware.h"
-#include "interfaces/blk.h"
-#include "memory.h"
-#include "plic.h"
 #include "uart.c"
 #include "../print.c"
-#include "memory.c"
 #include "plic.c"
 #include "interrupts.c"
 #include "virtio.h"
@@ -20,9 +15,7 @@
 #include "../fs/fat.c"
 #include "../fs/vfs.c"
 #include "../networking.c"
-#include "virtio_blk.h"
-#include "virtio_gpu.h"
-#include "virtio_input.h"
+#include "memory.c"
 
 #include "kernel.c"
 

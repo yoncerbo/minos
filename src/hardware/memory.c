@@ -1,5 +1,4 @@
 #include "common.h"
-#include "memory.h"
 
 // Page table entry
 // 32-10 Page number

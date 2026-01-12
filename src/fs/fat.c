@@ -1,4 +1,3 @@
-#include "fat.h"
 #include "common.h"
 #include "vfs.h"
 

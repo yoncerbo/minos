@@ -99,4 +99,43 @@ inline void virtq_descf(Virtq *vq, void *addr, uint16_t len, bool is_write);
 inline void virtq_descm(Virtq *vq, void *addr, uint16_t len, bool is_write);
 inline void virtq_descl(Virtq *vq, void *addr, uint16_t len, bool is_write);
 
+typedef enum {
+  VIRTIO_BLK_IN = 0, // read
+  VIRTIO_BLK_OUT = 1, // write
+} VirtioBlkReqType;
+
+typedef struct PACKED {
+  uint32_t type;
+  uint32_t reserved;
+  uint64_t sector;
+} VirtioBlkReq;
+
+typedef struct BlkDev {
+  VirtioDevice *dev;
+  Virtq *vq;
+  uint32_t sector_capacity;
+  VirtioBlkReq request;
+  uint8_t status;
+} VirtioBlkdev;
+
+VirtioBlkdev virtio_blk_init(VirtioDevice *dev);
+void virtio_blk_rw(VirtioBlkdev *blkdev, uint8_t *buffer, uint32_t first_sector, uint32_t len, bool is_write);
+
+typedef struct InputDev {
+  VirtioDevice *dev;
+  Virtq *event_queue;
+  Virtq *status_queue;
+  InputEvent *events;
+  uint16_t processed;
+} VirtioInput;
+
+VirtioInput virtio_input_init(VirtioDevice *dev);
+
+typedef struct GpuDev {
+  VirtioDevice *dev;
+  Virtq *vq;
+  Virtq *cq;
+  uint32_t *fb;
+} VirtioGpu;
+
 #endif

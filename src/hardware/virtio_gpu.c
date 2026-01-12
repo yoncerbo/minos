@@ -1,8 +1,10 @@
 #include "common.h"
 #include "interfaces/gpu.h"
-#include "memory.h"
 #include "virtio.h"
-#include "virtio_gpu.h"
+
+// TODO: Query the gpu for size instead
+const uint32_t DISPLAY_WIDTH = 640;
+const uint32_t DISPLAY_HEIGHT = 480;
 
 const uint32_t PIXEL_FORMAT = 67; // RGBA
 
@@ -208,7 +210,7 @@ void virtio_gpu_flush(VirtioGpu *gpu) {
   ASSERT(res2.type == VIRTIO_GPU_RESP_OK_NODATA);
 }
 
-void gpu_v1_get_surface(Gpu *gpu, Surface *out_surface) {
+void gpu_v1_get_surface(GpuDev *gpu, Surface *out_surface) {
   *out_surface = (Surface){
     .width = DISPLAY_WIDTH,
     .height = DISPLAY_HEIGHT,
@@ -217,6 +219,6 @@ void gpu_v1_get_surface(Gpu *gpu, Surface *out_surface) {
   };
 }
 
-void gpu_v1_flush(Gpu *gpu) {
+void gpu_v1_flush(GpuDev *gpu) {
   virtio_gpu_flush(gpu);
 }

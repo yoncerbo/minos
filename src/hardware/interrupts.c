@@ -1,6 +1,4 @@
 #include "common.h"
-#include "hardware.h"
-#include "sbi.h"
 #include "virtio.h"
 
 void report_exception(uint32_t cause, uint32_t val, uint32_t epc) {
