@@ -1,24 +1,21 @@
 #include "common.h"
-#include "virtio_gpu.h"
 #include "font.h"
-#include "drawing.h"
 
-const uint32_t BLACK = bswap32(0x000000ff);
-const uint32_t WHITE = 0xffffffff;
-
-void draw_char(uint32_t *fb, uint32_t x, uint32_t y, uint32_t color, uint8_t ch) {
+void draw_char(Surface *surface, int x, int y, uint32_t color, uint8_t character) {
+  // TODO: Consider using integer vector for position
   for (uint32_t i = 0; i < 8; ++i) {
-    for (uint32_t j = 0; j < 8; ++j) {
-      if (font8x8_basic[ch][i] & (1 << j)) {
-        fb[(y + i) * DISPLAY_WIDTH + x + j] = color;
-      }
+    uint32_t *row = (uint32_t *)((uint8_t *)surface->ptr + surface->pitch * (y + i) + x * 4);
+    // TODO: Bounds checking
+    for (uint32_t j = 0; j < 8; ++j, ++row) {
+      if (font8x8_basic[character][i] & (1 << j)) *row = color;
     }
   }
 }
 
-// Draws until limit or null byte
-void draw_chars(uint32_t *fb, uint32_t x, uint32_t y, uint32_t color, const char *str, uint32_t limit) {
+const uint32_t FONT_HEIGHT = 12;
+
+void draw_line(Surface *surface, int x, int y, uint32_t color, const char *str, uint32_t limit) {
   for (uint32_t i = 0; i < limit && str[i]; ++i) {
-    draw_char(fb, x + 8 * i, y, color, str[i]);
+    draw_char(surface, x + i * 8, y, color, str[i]);
   }
 }

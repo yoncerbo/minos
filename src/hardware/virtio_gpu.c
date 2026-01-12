@@ -1,4 +1,5 @@
 #include "common.h"
+#include "interfaces/gpu.h"
 #include "memory.h"
 #include "virtio.h"
 #include "virtio_gpu.h"
@@ -205,4 +206,17 @@ void virtio_gpu_flush(VirtioGpu *gpu) {
 
   ASSERT(res1.type == VIRTIO_GPU_RESP_OK_NODATA);
   ASSERT(res2.type == VIRTIO_GPU_RESP_OK_NODATA);
+}
+
+void gpu_v1_get_surface(Gpu *gpu, Surface *out_surface) {
+  *out_surface = (Surface){
+    .width = DISPLAY_WIDTH,
+    .height = DISPLAY_HEIGHT,
+    .pitch = DISPLAY_WIDTH * 4,
+    .ptr = gpu->fb,
+  };
+}
+
+void gpu_v1_flush(Gpu *gpu) {
+  virtio_gpu_flush(gpu);
 }

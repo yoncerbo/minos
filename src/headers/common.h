@@ -80,4 +80,29 @@ void *memset(void *s, int c, size_t n);
 int strncmp(const char *s1, const char *s2, size_t n);
 uint32_t __bswapsi2(uint32_t u);
 
+// src/drawing.c
+typedef struct {
+  uint32_t *ptr;
+  uint32_t width, height, pitch;
+} Surface;
+
+const uint32_t WHITE = 0xFFFFFFFF;
+const uint32_t BLACK = bswap32(0x000000FF);
+const uint32_t RED = bswap32(0xFF0000FF);
+const uint32_t BLUE = bswap32(0x0000FFFF);
+const uint32_t GREEN = bswap32(0x00FF00FF);
+
+void draw_char(Surface *surface, int x, int y, uint32_t color, uint8_t character);
+// Draws until limit or null byte
+void draw_line(Surface *surface, int x, int y, uint32_t color, const char *str, uint32_t limit);
+
+#include "interfaces/gpu.h"
+
+// src/kernel.c
+typedef struct {
+  Gpu *gpu;
+} Hardware;
+void kernel_init(Hardware *hw);
+void kernel_update(Hardware *hw);
+
 #endif

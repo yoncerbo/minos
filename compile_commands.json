@@ -11,13 +11,15 @@
       "-fno-stack-protector",
       "-ffreestanding",
       "-I",
+      "src",
+      "-I",
       "./src/headers",
       "-o",
       "out/kernel.elf",
-      "src/tests.c"
+      "src/hardware/main.c"
     ],
     "directory": "/s/minos",
-    "file": "/s/minos/src/tests.c",
+    "file": "/s/minos/src/hardware/main.c",
     "output": "/s/minos/out/kernel.elf"
   },
   {
@@ -32,34 +34,15 @@
       "-fno-stack-protector",
       "-ffreestanding",
       "-I",
-      "./src/headers",
-      "-o",
-      "out/kernel.elf",
-      "src/boot.s"
-    ],
-    "directory": "/s/minos",
-    "file": "/s/minos/src/boot.s",
-    "output": "/s/minos/out/kernel.elf"
-  },
-  {
-    "arguments": [
-      "/nix/store/4k73amyib8cs1x3zns8rarw54d4hwxpp-riscv32-none-elf-gcc-wrapper-14.3.0/bin/riscv32-none-elf-gcc",
-      "-c",
-      "-std=c99",
-      "-O2",
-      "-g3",
-      "-Wall",
-      "-Wextra",
-      "-fno-stack-protector",
-      "-ffreestanding",
+      "src",
       "-I",
       "./src/headers",
       "-o",
       "out/kernel.elf",
-      "src/main.c"
+      "src/hardware/boot.s"
     ],
     "directory": "/s/minos",
-    "file": "/s/minos/src/main.c",
+    "file": "/s/minos/src/hardware/boot.s",
     "output": "/s/minos/out/kernel.elf"
   }
 ]

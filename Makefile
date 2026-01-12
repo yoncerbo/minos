@@ -2,7 +2,7 @@ CFLAGS = -std=c99 -O2 -g3 -Wall -Wextra -fno-stack-protector -ffreestanding -nos
 
 build: src/*
 	riscv32-none-elf-gcc ${CFLAGS} -Wl,-Tsrc/hardware/kernel.ld -Wl,-Map=out/kernel.map \
-		-o out/kernel.elf src/main.c src/hardware/boot.s -I ./src/headers
+		-o out/kernel.elf src/hardware/main.c src/hardware/boot.s -I src -I ./src/headers
 
 run: build
 	qemu-system-riscv32 -machine virt -bios default -kernel out/kernel.elf \

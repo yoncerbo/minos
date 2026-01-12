@@ -3,6 +3,8 @@
 
 #include "common.h"
 
+#include "interfaces/gpu.h"
+
 const uint32_t DISPLAY_WIDTH = 640;
 const uint32_t DISPLAY_HEIGHT = 480;
 
@@ -10,7 +12,7 @@ typedef struct {
   uint8_t r, g, b, a;
 } Rgba;
 
-typedef struct {
+typedef struct Gpu {
   VirtioDevice *dev;
   Virtq *vq;
   Virtq *cq;
