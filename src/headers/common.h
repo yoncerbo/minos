@@ -20,6 +20,9 @@ typedef struct {
   uint32_t len;
 } Str;
 
+// Used for marking out parameters
+#define out
+
 #define NULL 0
 #define true 1
 #define false 0

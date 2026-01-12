@@ -55,6 +55,9 @@ void handle_external_interrupt(uint32_t id) {
     uint32_t status = dev->interrupt_status;
     // TODO: Devices specific interrupt handling
     switch (dev->device) {
+      case VIRTIO_DEVICE_GPU: {
+        LOG("Gpu interrupt", 0);
+      } break;
       default: break;
     }
     dev->interrupt_ack = status;
