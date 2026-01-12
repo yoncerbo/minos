@@ -1,9 +1,28 @@
 #include "common.h"
 #include "virtio_input.h"
-#include "hardware.h"
 #include "interfaces/input.h"
 #include "memory.h"
 #include "virtio.h"
+
+#include "hardware.h"
+
+enum {
+  VIRTIO_INPUT_CFG_ID_NAME = 1,
+  VIRTIO_INPUT_CFG_EV_BITS = 0x11,
+  VIRTIO_INPUT_CFG_ABS_INFO = 0x12,
+};
+
+typedef volatile struct {
+  uint8_t select;
+  uint8_t subsel;
+  uint8_t size;
+  uint8_t reserved[5];
+  union {
+    char string[128];
+    uint8_t bitmap[128];
+    InputAbsInfo abs_info;
+  } u;
+} VirtioInputConfig;
 
 VirtioInput virtio_input_init(VirtioDevice *dev) {
   ASSERT(dev->magic == VIRTIO_MAGIC);
@@ -59,3 +78,37 @@ uint32_t input_v1_read_events(InputDev *dev, InputEvent *out_events, uint32_t ev
   return events_to_write;
 }
 
+uint32_t input_v1_get_name(InputDev *dev, char *buffer, uint32_t limit) {
+  VirtioInputConfig *config = (void *)dev->dev->config;
+  config->select = VIRTIO_INPUT_CFG_ID_NAME;
+  config->subsel = 0;
+
+  uint32_t size = config->size;
+  if (!size) return 0;
+
+  uint32_t to_write = UPPER_BOUND(size, limit);
+  memcpy(buffer, config->u.string, to_write);
+  return to_write;
+}
+
+uint32_t input_v1_get_capabilities(InputDev *dev, EventType type, uint8_t *buffer, uint32_t limit) {
+  VirtioInputConfig *config = (void *)dev->dev->config;
+  config->select = VIRTIO_INPUT_CFG_EV_BITS;
+  config->subsel = type;
+
+  uint32_t size = config->size;
+  if (!size) return 0;
+
+  uint32_t to_write = UPPER_BOUND(size, limit);
+  memcpy(buffer, config->u.bitmap, to_write);
+  return to_write;
+}
+
+void input_v1_get_abs_info(InputDev *dev, uint8_t axis, InputAbsInfo *out_abs_info) {
+  VirtioInputConfig *config = (void *)dev->dev->config;
+  config->select = VIRTIO_INPUT_CFG_ABS_INFO;
+  config->subsel = axis;
+
+  ASSERT(config->size == sizeof(InputAbsInfo));
+  *out_abs_info = config->u.abs_info;
+}
