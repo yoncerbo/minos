@@ -10,27 +10,57 @@ CFLAGS="$CFLAGS
   -fno-stack-protector -ffreestanding
   -nostdlib"
 
+UEFI_FLAGS="-target x86_64-uknown-windows -fshort-wchar -Wl,-entry:efi_main, -Wl,subsystem:efi_application -fuse-ld=lld-link -mno-red-zone"
+
+DIR=src/hardware/$TARGET
+OUT=out/$TARGET
+
 build() {
-  $CC $CFLAGS -Wl,-Tsrc/hardware/kernel.ld -Wl,-Map=out/kernel.map \
-    -o out/kernel.elf src/hardware/main.c src/hardware/boot.s
+  mkdir -p $OUT
+
+  case "$TARGET" in
+    "rv32-sbi")
+      $CC $CFLAGS -Wl,-T$DIR/linker.ld -Wl,-Map=$OUT/kernel.map \
+        -o $OUT/kernel.elf $DIR/main.c $DIR/boot.s
+      ;;
+    "x64-uefi")
+      clang $CFLAGS $UEFI_FLAGS -o $OUT/BOOTX64.EFI $DIR/main.c
+      mcopy -i fat.img $OUT/BOOTX64.EFI ::/EFI/BOOT -D o
+      ;;
+    *)
+      echo "Unknown taret '$TARGET'"
+      ;;
+  esac
+
 }
 
 run() {
   build
-	qemu-system-riscv32 -machine virt -bios default -kernel out/kernel.elf \
-		-serial mon:stdio --no-reboot \
-		-drive id=drive0,file=fat.fs,format=raw,if=none \
-		-device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0 \
-		-drive id=drive1,file=file.txt,format=raw,if=none,copy-on-read=off \
-		-device virtio-blk-device,drive=drive1,bus=virtio-mmio-bus.1 \
-		-netdev user,id=net0 \
-		-device virtio-net-device,bus=virtio-mmio-bus.2,netdev=net0 \
-		-object filter-dump,id=f1,netdev=net0,file=out/net_dump.dat \
-		-device virtio-keyboard-device,bus=virtio-mmio-bus.4 \
-		-device virtio-tablet-device,bus=virtio-mmio-bus.5 \
-		-audio id=audiodev0,driver=sdl,model=virtio \
-		-device virtio-gpu-device,bus=virtio-mmio-bus.3 \
-		# -device virtio-sound-device,bus=virtio-mmio-bus.6,audiodev=audiodev0 \
+
+  case "$TARGET" in
+    "rv32-sbi")
+      qemu-system-riscv32 -machine virt -bios default -kernel $OUT/kernel.elf \
+        -serial mon:stdio --no-reboot \
+        -drive id=drive0,file=fat.fs,format=raw,if=none \
+        -device virtio-blk-device,drive=drive0,bus=virtio-mmio-bus.0 \
+        -drive id=drive1,file=file.txt,format=raw,if=none,copy-on-read=off \
+        -device virtio-blk-device,drive=drive1,bus=virtio-mmio-bus.1 \
+        -netdev user,id=net0 \
+        -device virtio-net-device,bus=virtio-mmio-bus.2,netdev=net0 \
+        -object filter-dump,id=f1,netdev=net0,file=out/net_dump.dat \
+        -device virtio-keyboard-device,bus=virtio-mmio-bus.4 \
+        -device virtio-tablet-device,bus=virtio-mmio-bus.5 \
+        -audio id=audiodev0,driver=sdl,model=virtio \
+        -device virtio-gpu-device,bus=virtio-mmio-bus.3 \
+        # -device virtio-sound-device,bus=virtio-mmio-bus.6,audiodev=audiodev0 \
+      ;;
+    "x64-uefi")
+      qemu-system-x86_64 -bios $OVMF_FD fat.img
+      ;;
+    *)
+      echo "Unknown taret '$TARGET'"
+      ;;
+  esac
 }
 
 make-fs() {
@@ -52,6 +82,13 @@ clean() {
   rmdir fs
   rm disk.tar
   rm out -rf
+}
+
+make-fat-image() {
+  dd if=/dev/zero of=fat.img bs=1k count=1440
+  mformat -i fat.img -f 1440 ::
+  mmd -i fat.img ::/EFI
+  mmd -i fat.img ::/EFI/BOOT
 }
 
 "$@"

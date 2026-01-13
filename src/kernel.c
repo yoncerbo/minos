@@ -4,7 +4,21 @@
 #include "interfaces/input.h"
 
 // Source files
+#include "strings.c"
 #include "drawing.c"
+#include "print.c"
+
+#include "hardware/uart.c"
+#include "hardware/virtio.c"
+#include "hardware/virtio_blk.c"
+#include "hardware/virtio_net.c"
+#include "hardware/virtio_gpu.c"
+#include "hardware/virtio_input.c"
+
+#include "fs/tar.c"
+#include "fs/fat.c"
+#include "fs/vfs.c"
+#include "networking.c"
 
 void kernel_init(Hardware *hw) {
   ASSERT(hw->gpu);

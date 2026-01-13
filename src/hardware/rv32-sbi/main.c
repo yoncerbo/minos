@@ -1,20 +1,10 @@
 
-#include "../common.c"
 #include "common.h"
-#include "uart.c"
-#include "../print.c"
+#include "virtio.h"
+
+// Source files
 #include "plic.c"
 #include "interrupts.c"
-#include "virtio.h"
-#include "virtio.c"
-#include "virtio_blk.c"
-#include "virtio_net.c"
-#include "virtio_gpu.c"
-#include "virtio_input.c"
-#include "../fs/tar.c"
-#include "../fs/fat.c"
-#include "../fs/vfs.c"
-#include "../networking.c"
 #include "memory.c"
 
 #include "kernel.c"
