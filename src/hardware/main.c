@@ -27,7 +27,7 @@ void kernel_main(out Hardware **hardware) {
   memset(BSS_START, 0, BSS_END - BSS_START);
   uart_init();
 
-  LOG("Starting kernel...\n");
+  LOG("Starting kernel...\n", 0);
 
   uint32_t flags, *page_table = (void *)alloc_pages(1);
   LOG("Mapping physical pages into virtual addresses, table at %x\n", page_table);
@@ -46,7 +46,7 @@ void kernel_main(out Hardware **hardware) {
     map_page(page_table, (paddr_t)paddr, (vaddr_t)paddr, flags);
   }
 
-  LOG("Setting up virtual memory\n");
+  LOG("Setting up virtual memory\n", 0);
   __asm__ __volatile__(
       "sfence.vma\n"
       "csrw satp, %[satp]\n"
@@ -122,7 +122,7 @@ void kernel_main(out Hardware **hardware) {
 
   // sbi_set_timer(0);
 
-  LOG("Initialization finished\n");
+  LOG("Initialization finished\n", 0);
   kernel_init(&hw);
   for (;;) {
     __asm__ __volatile__("wfi");

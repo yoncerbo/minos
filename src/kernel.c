@@ -7,8 +7,6 @@
 #include "drawing.c"
 
 void kernel_init(Hardware *hw) {
-  LOG("Hello World!\n");
-
   ASSERT(hw->gpu);
 
   Surface surface;
@@ -43,7 +41,7 @@ void kernel_update(Hardware *hw) {
   InputEvent events[16];
   for (uint32_t dev_index = 0; dev_index < hw->input_devices_count; ++dev_index) {
     uint32_t events_written = input_v1_read_events(&hw->input_devices[dev_index], events, 16);
-    for (int i = 0; i < events_written; ++i) {
+    for (uint32_t i = 0; i < events_written; ++i) {
       if (events[i].type == EV_KEY && events[i].code == KEY_A && events[i].value == 0) {
         LOG("key A released\n", 0);
       }

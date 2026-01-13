@@ -62,6 +62,6 @@ void virtio_blk_rw(VirtioBlkdev *blkdev, uint8_t *buffer, uint32_t first_sector,
   ASSERT(blkdev->status == 0);
 }
 
-void blk_v1_read_write_sectors(BlkDev *blkdev, uint8_t *buffer, uint32_t first_sector, uint32_t len, BlkDevFlags flags) {
+void blk_v1_read_write_sectors(BlkDev *blkdev, void *buffer, uint32_t first_sector, uint32_t len, BlkDevFlags flags) {
   virtio_blk_rw(blkdev, buffer, first_sector, len, flags);
 }

@@ -5,7 +5,7 @@ set -e
 CFLAGS="$CFLAGS
   -std=c99 -O1 -g3
   -I ./src -I ./src/headers
-  -Wall -Wextra
+  -Wall -Wextra -pedantic-errors
   -Wno-unused-parameter -Wno-unused-const-variable -Wno-unused-variable -Wno-unused-function
   -fno-stack-protector -ffreestanding
   -nostdlib"

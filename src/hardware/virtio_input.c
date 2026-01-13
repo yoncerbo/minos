@@ -83,7 +83,7 @@ uint32_t input_v1_get_name(InputDev *dev, char *buffer, uint32_t limit) {
   if (!size) return 0;
 
   uint32_t to_write = UPPER_BOUND(size, limit);
-  memcpy(buffer, config->u.string, to_write);
+  memcpy(buffer, (const void *)config->u.string, to_write);
   return to_write;
 }
 
@@ -96,7 +96,7 @@ uint32_t input_v1_get_capabilities(InputDev *dev, EventType type, uint8_t *buffe
   if (!size) return 0;
 
   uint32_t to_write = UPPER_BOUND(size, limit);
-  memcpy(buffer, config->u.bitmap, to_write);
+  memcpy(buffer, (const void *)config->u.bitmap, to_write);
   return to_write;
 }
 

@@ -64,16 +64,17 @@ void handle_external_interrupt(uint32_t id) {
     int ch = *UART;
     printf("char: '%c', %d\n", ch, ch);
     switch (ch) {
-      case 13:
+      case 13: {
         putchar(10);
-        break;
-      case 127:
+      } break;
+      case 127: {
         putchar(8);
         putchar(' ');
         putchar(8);
-        break;
-      default:
+      } break;
+      default: {
         putchar(ch);
+      } break;
     }
   } else {
     PANIC("Unknown supervisor external interrupt %d", id);
@@ -93,22 +94,23 @@ void handle_supervisor_interrupt(void) {
   if (interrupt) {
     uint32_t code = scause & 0x7fffffff;
     switch (code) {
-      case 1:
-        PANIC("Supervisor software interrupt");
-        break;
-      case 5:
+      case 1: {
+        PANIC("Supervisor software interrupt", 0);
+      } break;
+      case 5: {
         printf("Timer\n");
         uint64_t time;
         __asm__ __volatile__("rdtime %0" : "=r"(time));
         sbi_set_timer(time + 10000000);
-        break;
-      case 9:
+      } break;
+      case 9: {
         uint32_t id = plic_claim();
         handle_external_interrupt(id);
         plic_complete(id);
-        break;
-      default:
+      } break;
+      default: {
         PANIC("Unknown interrupt cause=%d", code);
+      } break;
     }
     uint32_t mask = 1 << code;
     __asm__ __volatile__(
@@ -134,17 +136,18 @@ void handle_machine_interrupt(void) {
   if (interrupt) {
     uint32_t code = mcause & 0x7fffffff;
     switch (code) {
-      case 3:
-        PANIC("Machine software interrupt");
-        break;
-      case 7:
-        PANIC("Machine timer interrupt");
-        break;
-      case 11:
-        PANIC("Machine external interrupt");
-        break;
-      default:
+      case 3: {
+        PANIC("Machine software interrupt", 0);
+      } break;
+      case 7: {
+        PANIC("Machine timer interrupt", 0);
+      } break;
+      case 11: {
+        PANIC("Machine external interrupt", 0);
+      } break;
+      default: {
         PANIC("Unknown interrupt cause=%d", code);
+      } break;
     }
     return;
   }

@@ -162,7 +162,7 @@ FatDriver fat_driver_init(VirtioBlkdev *blkdev) {
   fat_extBS_32 *ebs = (void *)&bs->extended_section;
 
   // TODO: move it behind a debug flag or something
-  LOG("Reading FAT disk boot record data\n");
+  LOG("Reading FAT disk boot record data\n", 0);
   DEBUGD(bs->bytes_per_sector);
   DEBUGD(bs->sectors_per_cluster);
   DEBUGD(bs->reserved_sector_count);

@@ -83,9 +83,9 @@ void virtio_net_send(VirtioNetdev *netdev, uint8_t *packet, uint32_t size) {
 // Returns the buffer index - 0..16
 uint32_t virtio_net_recv(VirtioNetdev *netdev) {
   while (netdev->rq->used.index <= netdev->processed_requests) {
-    LOG("Waiting\n");
+    LOG("Waiting\n", 0);
   }
-  LOG("Packets available\n");
+  LOG("Packets available\n", 0);
 
   uint32_t used_index = netdev->processed_requests++;
   LOG("Processing request %d\n", used_index);

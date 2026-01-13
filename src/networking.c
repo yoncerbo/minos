@@ -323,7 +323,8 @@ void net_dhcp_request(VirtioNetdev *netdev) {
   {
     uint32_t index = virtio_net_recv(netdev);
     VirtioNetHeader *header = (void *)(netdev->buffers + 2048 * index);
-    net_handle_dhcp_offer((void *)header->packet, &sender, &dhcp_server);
+    void *packet = netdev->buffers + 2048 * index + sizeof(*header);
+    net_handle_dhcp_offer(packet, &sender, &dhcp_server);
     ASSERT(sender.ip == CLIENT_IP);
     ASSERT(dhcp_server.ip == SERVER_IP);
     virtio_net_return_buffer(netdev, index);
@@ -335,7 +336,8 @@ void net_dhcp_request(VirtioNetdev *netdev) {
   {
     uint32_t index = virtio_net_recv(netdev);
     VirtioNetHeader *header = (void *)(netdev->buffers + 2048 * index);
-    net_handle_dhcp_ack((void *)header->packet, &sender, &dhcp_server);
+    void *packet = netdev->buffers + 2048 * index + sizeof(*header);
+    net_handle_dhcp_ack(packet, &sender, &dhcp_server);
     virtio_net_return_buffer(netdev, index);
   }
 }

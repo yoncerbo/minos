@@ -107,7 +107,7 @@ Fid vfs_fopen(Vfs *vfs, Str path) {
       memcpy(&file->name, name.ptr, name.len);
 
       return (Fid){ file->gen, index };
-    }
+    } break;
     case FS_USTAR: {
       TarDriver *driver = (void *)match.fs;
       DirEntry entry = tar_find_file(driver, match.subpath);
@@ -126,7 +126,7 @@ Fid vfs_fopen(Vfs *vfs, Str path) {
       memcpy(&file->name, name.ptr, name.len);
 
       return (Fid){ file->gen, index };
-    }
+    } break;
     default:
       PANIC("Unsupported file system type: %d\n", match.fs->type);
   }
@@ -150,14 +150,14 @@ void vfs_file_rw_sectors(Vfs *vfs, Fid fid, uint32_t start, uint32_t len, uint8_
   File *file = &vfs->files[fid.index];
 
   switch (file->fs->type) {
-    case FS_FAT32:
+    case FS_FAT32: {
       uint32_t cluster = file->start;
       fat_rw_sectors((void *)file->fs, cluster, start, len, buffer, is_write);
-      break;
-    case FS_USTAR:
+    } break;
+    case FS_USTAR: {
       TarDriver *driver = (void *)file->fs;
       virtio_blk_rw(driver->blkdev, buffer, file->start + start, len, is_write);
-      break;
+    } break;
     default:
       PANIC("unknown file system type: %d", file->fs->type);
   }

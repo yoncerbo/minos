@@ -21,7 +21,6 @@ typedef struct {
   uint16_t gso_size;
   uint16_t csum_start;
   uint16_t num_buffers;
-  char packet[];
 } PACKED VirtioNetHeader;
 
 typedef struct {

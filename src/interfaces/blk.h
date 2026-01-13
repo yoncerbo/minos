@@ -12,6 +12,6 @@ typedef enum {
   BLKDEV_WRITE = 1,
 } BlkDevFlags;
 
-void blk_v1_read_write_sectors(BlkDev *blkdev, uint8_t *buffer, uint32_t first_sector, uint32_t len, BlkDevFlags flags);
+void blk_v1_read_write_sectors(BlkDev *blkdev, void *buffer, uint32_t first_sector, uint32_t len, BlkDevFlags flags);
 
 #endif
