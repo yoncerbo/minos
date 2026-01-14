@@ -1,10 +1,46 @@
 #include "common.h"
 #include "efi.h"
 
+EfiSimpleTextOutputProtocol *stderr;
+
+void putchar_efi(char ch) {
+  if (stderr) {
+    if (ch == '\n') {
+      stderr->output_string(stderr, L"\n\r");
+    } else {
+      stderr->output_string(stderr, (wchar_t[]){ch, 0});
+    }
+  }
+}
+
+Surface *log_surface;
+
+void putchar_surface(char ch) {
+  const int MARGIN = 16;
+  static uint32_t x = MARGIN;
+  static uint32_t y = MARGIN;
+
+  if (x > log_surface->width - (8 + MARGIN)) {
+    x = MARGIN;
+    y += 16;
+  }
+  if (y > log_surface->height - (16 + MARGIN)) {
+    return;
+  }
+
+  if (ch == '\n') {
+    x = MARGIN;
+    y += 16;
+  } else {
+    draw_char(log_surface, x, y, WHITE, ch);
+    x += 8;
+  }
+
+}
+
 // Source files
 #include "drawing.c"
-
-EfiSimpleTextOutputProtocol *stderr;
+#include "print.c"
 
 void assert_ok(size_t status, const wchar_t *error_message) {
   if (IS_EFI_ERROR(status)) {
@@ -37,10 +73,13 @@ size_t read_efi_file(EfiFileHandle *file, void *buffer, size_t limit) {
   return limit;
 }
 
-size_t efi_main(void *ImageHandle, EfiSystemTable *st) {
-  stderr = st->stderr;
-  size_t status;
+EfiMemoryDescriptor MEMORY_MAP[512];
 
+size_t efi_setup(void *image_handle, EfiSystemTable *st, Surface *surface, size_t *memory_map_size) {
+  stderr = st->con_out;
+  putchar = putchar_efi;
+
+  size_t status = 0;
   EfiGraphicsOutputProtocol *gop;
 
   status = st->boot_services->locate_protocol(&EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, NULL, (void **)&gop);
@@ -66,17 +105,16 @@ size_t efi_main(void *ImageHandle, EfiSystemTable *st) {
   }
 
   // TODO: Handle different formats
-  Surface surface = {
+  *surface = (Surface){
     .ptr = gop->mode->frame_buffer_base,
     .width = info->width,
     .height = info->height,
     .pitch = info->pixel_per_scan_line * 4,
   };
-  fill_surface(&surface, 0xff111111);
-  draw_line(&surface, 100, 100, RED, "Hello, World!", -1);
+  fill_surface(surface, 0xff111111);
 
   EfiLoadedImageProtocol *loaded_image;
-  status = st->boot_services->handle_protocol(ImageHandle, &EFI_LOADED_IMAGE_PROTOCOL_GUID, (void **)&loaded_image);
+  status = st->boot_services->handle_protocol(image_handle, &EFI_LOADED_IMAGE_PROTOCOL_GUID, (void **)&loaded_image);
   assert_ok(status, L"Failed to load image protocol");
 
   EfiSimpleFileSystemProtocol *file_system;
@@ -88,32 +126,57 @@ size_t efi_main(void *ImageHandle, EfiSystemTable *st) {
   status = file_system->volume_open(file_system, &root);
   assert_ok(status, L"Failed to open root file");
 
-  EfiFileHandle *file = open_efi_file(root, L"file.txt", EFI_FILE_MODE_READ, 0);
-  EfiFileHandle *kernel_dir = open_efi_file(root, L"kernel", EFI_FILE_MODE_READ, 0);
-  EfiFileHandle *sub_file = open_efi_file(kernel_dir, L"file2.txt", EFI_FILE_MODE_READ, 0);
-
-  char buffer[256 + 1];
-  size_t buffer_size = 256;
-  size_t written;
-
-  written = read_efi_file(sub_file, buffer, buffer_size);
-  draw_line(&surface, 20, 20, WHITE, buffer, written);
-
-  written = read_efi_file(file, buffer, buffer_size);
-  draw_line(&surface, 20, 20 + 16, RED, buffer, written);
-
-  close_efi_file(root);
-  close_efi_file(kernel_dir);
-  close_efi_file(sub_file);
-  close_efi_file(file);
-
   // TODO: Functions to convert between asci and utf-16?
   // TODO: Setup uart for logging and use it instead of the console
   // TODO: Make our own console?
 
-  for (;;) {
-    __asm__ __volatile__("hlt");
-  }
+  size_t map_key, descriptor_size;
+  uint32_t descriptor_version;
+  *memory_map_size = sizeof(MEMORY_MAP);
+
+  do {
+    status = st->boot_services->get_memory_map(memory_map_size, MEMORY_MAP, &map_key,
+        &descriptor_size, &descriptor_version);
+    if (status == EFI_BUFFER_TOO_SMALL) {
+      stderr->output_string(stderr, L"Memory map buffer too small");
+      TRAP();
+    }
+    assert_ok(status, L"Failed to get memory map");
+
+    if (descriptor_size != sizeof(EfiMemoryDescriptor)) {
+      stderr->output_string(stderr, L"ERROR: Bad memory descriptor size");
+      DEBUGD(descriptor_size);
+      DEBUGD(sizeof(EfiMemoryDescriptor));
+      TRAP();
+    }
+
+    status = st->boot_services->exit_boot_services(image_handle, map_key);
+    if (IS_EFI_ERROR(status)) {
+      stderr->output_string(stderr, L"Failed to exit boot services\n\r");
+    }
+  } while (IS_EFI_ERROR(status));
+
+  stderr = NULL;
+  log_surface = surface;
+  putchar = putchar_surface;
 
   return status;
 }
+
+size_t efi_main(void *image_handle, EfiSystemTable *st) {
+  Surface surface;
+  size_t memory_map_size;
+
+  size_t status = efi_setup(image_handle, st, &surface, &memory_map_size);
+  if (IS_EFI_ERROR(status)) return status;
+
+  int count = memory_map_size / sizeof(MEMORY_MAP[0]);
+  for (int i = 0; i < count; ++i) {
+    EfiMemoryDescriptor *desc = &MEMORY_MAP[i];
+    DEBUGD(desc->physical_start);
+    DEBUGD(desc->number_of_pages);
+  }
+
+  for (;;) __asm__ __volatile__("hlt");
+}
+

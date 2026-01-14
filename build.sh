@@ -10,7 +10,7 @@ CFLAGS="$CFLAGS
   -fno-stack-protector -ffreestanding
   -nostdlib"
 
-UEFI_FLAGS="-target x86_64-uknown-windows -fshort-wchar -Wl,-entry:efi_main, -Wl,-subsystem:efi_application -fuse-ld=lld-link -mno-red-zone"
+UEFI_FLAGS="-target x86_64-uknown-windows -fshort-wchar -Wl,-entry:efi_main, -Wl,-subsystem:efi_application -fuse-ld=lld-link -mno-red-zone -masm=intel"
 
 DIR=src/hardware/$TARGET
 OUT=out/$TARGET

@@ -8,35 +8,6 @@ extern char HEAP_START[], HEAP_END[], KERNEL_BASE[];
 
 #define PAGE_SIZE 4096
 
-#define DEBUGD(var) \
-  printf(STRINGIFY(var) "=%d\n", var)
-#define DEBUGS(var) \
-  printf(STRINGIFY(var) "='%s'\n", var)
-#define DEBUGX(var) \
-  printf(STRINGIFY(var) "=0x%x\n", var)
-
-// TODO: Add better logging functionality
-#define LOG(fmt, ...) \
-  printf("[LOG] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, ##__VA_ARGS__)
-
-#define ERROR(fmt, ...) \
-  printf("[ERROR] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, ##__VA_ARGS__)
-
-#define PANIC(fmt, ...) do { \
-  printf("[PANIC] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, ##__VA_ARGS__); \
-  for (;;) __asm__ __volatile__("wfi"); \
-} while (0)
-
-#define ASSERT(expr) do { \
-  if (!(expr)) { \
-    printf("[ASSERT] %s " __FILE__ ":" STRINGIFY(__LINE__) ": " STRINGIFY(expr) "\n", __func__); \
-    for (;;) __asm__ __volatile__("wfi"); \
-  } \
-} while (0)
-
-void putchar(char ch);
-void printf(const char *fmt, ...);
-
 // src/uart.c
 void uart_init(void);
 

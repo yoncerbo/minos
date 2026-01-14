@@ -10,8 +10,10 @@ typedef uint16_t wchar_t;
 #define EFI_ERROR(a) ((a) | ~(((size_t)-1) >> 1))
 #define IS_EFI_ERROR(a) ((a) & ~(((size_t)-1) >> 1))
 
-const size_t EFI_NOT_READY = EFI_ERROR(6);
-const size_t EFI_NOT_STARTED = EFI_ERROR(19);
+#define EFI_SUCCESS 0
+#define EFI_NOT_READY EFI_ERROR(6)
+#define EFI_NOT_STARTED EFI_ERROR(19)
+#define EFI_BUFFER_TOO_SMALL EFI_ERROR(5)
 
 typedef struct {
   uint32_t data1;
@@ -126,7 +128,7 @@ typedef struct {
 } SimpleTextOutputMode;
 
 typedef struct {
-  void *reset;
+  size_t (*reset)(void *this, bool extended_verification);
   size_t (*output_string)(void *this, const wchar_t *string);
   void *test_string;
   size_t (*query_mode)(void *this, size_t mode_number, size_t *columns, size_t *rows);
@@ -140,17 +142,17 @@ typedef struct {
 
 typedef struct EfiFileHandle EfiFileHandle;
 
-const uint64_t EFI_FILE_MODE_READ      = 0x0000000000000001;
-const uint64_t EFI_FILE_MODE_WRITE     = 0x0000000000000002;
-const uint64_t EFI_FILE_MODE_CREATE    = 0x8000000000000000;
+#define EFI_FILE_MODE_READ      0x0000000000000001
+#define EFI_FILE_MODE_WRITE     0x0000000000000002
+#define EFI_FILE_MODE_CREATE    0x8000000000000000
 
-const uint64_t EFI_FILE_READ_ONLY      = 0x0000000000000001;
-const uint64_t EFI_FILE_HIDDEN         = 0x0000000000000002;
-const uint64_t EFI_FILE_SYSTEM         = 0x0000000000000004;
-const uint64_t EFI_FILE_RESERVED       = 0x0000000000000008;
-const uint64_t EFI_FILE_DIRECTORY      = 0x0000000000000010;
-const uint64_t EFI_FILE_ARCHIVE        = 0x0000000000000020;
-const uint64_t EFI_FILE_VALID_ATTR     = 0x0000000000000037;
+#define EFI_FILE_READ_ONLY      0x0000000000000001
+#define EFI_FILE_HIDDEN         0x0000000000000002
+#define EFI_FILE_SYSTEM         0x0000000000000004
+#define EFI_FILE_RESERVED       0x0000000000000008
+#define EFI_FILE_DIRECTORY      0x0000000000000010
+#define EFI_FILE_ARCHIVE        0x0000000000000020
+#define EFI_FILE_VALID_ATTR     0x0000000000000037
 
 struct EfiFileHandle {
   uint64_t revision;
@@ -192,6 +194,14 @@ typedef struct {
 } EfiSimpleFileSystemProtocol;
 
 typedef struct {
+  uint32_t type;
+  paddr_t physical_start;
+  vaddr_t virtual_start;
+  uint64_t number_of_pages, attributes;
+  uint64_t _padding;
+} EfiMemoryDescriptor;
+
+typedef struct {
   EfiTableHeader header;
 
   void *raise_tpl;
@@ -199,7 +209,8 @@ typedef struct {
 
   void *allocate_pages;
   void *free_pages;
-  void *get_memory_map;
+  size_t (*get_memory_map)(size_t *memory_map_size, EfiMemoryDescriptor *memory_map,
+      size_t *map_key, size_t *descriptor_size, uint32_t *descriptor_version);
   void *allocate_pool;
   void *free_pool;
 
@@ -224,7 +235,7 @@ typedef struct {
   void *start_image;
   void *exit;
   void *unload_image;
-  void *exit_boot_services;
+  size_t (*exit_boot_services)(void *image_handle, size_t map_key);
 
   void *get_next_high_monotonic_count;
   void *stall;

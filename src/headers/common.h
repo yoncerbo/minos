@@ -1,8 +1,6 @@
 #ifndef INCLUDE_COMMON
 #define INCLUDE_COMMON
 
-#include "input_codes.h"
-
 typedef char int8_t;
 typedef unsigned char uint8_t;
 typedef short int16_t;
@@ -12,7 +10,7 @@ typedef unsigned int uint32_t;
 typedef long long int64_t;
 typedef unsigned long long uint64_t;
 
-#define CASSERT(predicate) typedef char assertion_failed##__LINE__[(predicate) ? 1 : -1]
+#define CASSERT(predicate) char assertion_failed##__LINE__[(predicate) ? 1 : -1]
 
 CASSERT(sizeof(int8_t) == 1);
 CASSERT(sizeof(int16_t) == 2);
@@ -44,6 +42,7 @@ typedef struct {
 #define true 1
 #define false 0
 
+#define TRAP __builtin_trap
 #define PACKED __attribute__((packed))
 #define ALIGNED(n) __attribute__((aligned(n)))
 #define va_list __builtin_va_list
@@ -67,6 +66,35 @@ void *memcpy(void *restrict dest, const void *restrict src, size_t n);
 void *memset(void *s, int c, size_t n);
 int strncmp(const char *s1, const char *s2, size_t n);
 uint32_t __bswapsi2(uint32_t u);
+
+#define DEBUGD(var) \
+  printf(STRINGIFY(var) "=%d\n", var)
+#define DEBUGS(var) \
+  printf(STRINGIFY(var) "='%s'\n", var)
+#define DEBUGX(var) \
+  printf(STRINGIFY(var) "=0x%x\n", var)
+
+// TODO: Add better logging functionality
+#define LOG(fmt, ...) \
+  printf("[LOG] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, __VA_ARGS__)
+
+#define ERROR(fmt, ...) \
+  printf("[ERROR] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, __VA_ARGS__)
+
+#define PANIC(fmt, ...) do { \
+  printf("[PANIC] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, __VA_ARGS__); \
+  for (;;) __asm__ __volatile__("wfi"); \
+} while (0)
+
+#define ASSERT(expr) do { \
+  if (!(expr)) { \
+    printf("[ASSERT] %s " __FILE__ ":" STRINGIFY(__LINE__) ": " STRINGIFY(expr) "\n", __func__); \
+    for (;;) __asm__ __volatile__("wfi"); \
+  } \
+} while (0)
+
+void (*putchar)(char ch);
+void printf(const char *fmt, ...);
 
 // src/drawing.c
 typedef struct {

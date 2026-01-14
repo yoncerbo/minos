@@ -2,6 +2,7 @@
 #define INCLUDE_INTERFACE_INPUT
 
 #include "common.h"
+#include "input_codes.h"
 
 typedef struct PACKED {
   uint16_t type;

@@ -1,5 +1,6 @@
 
 #include "common.h"
+#include "arch.h"
 #include "virtio.h"
 
 // Source files
@@ -11,11 +12,15 @@
 
 // TODO: setup proper memory handling and allocators
 // TODO: task system, processes
-// TODO: virtio gpu and input
 
-void kernel_main(out Hardware **hardware) {
+void uart_putchar(char ch) {
+  *UART = ch;
+}
+
+void kernel_main(Hardware **hardware) {
   memset(BSS_START, 0, BSS_END - BSS_START);
   uart_init();
+  putchar = uart_putchar;
 
   LOG("Starting kernel...\n", 0);
 
@@ -113,6 +118,7 @@ void kernel_main(out Hardware **hardware) {
   // sbi_set_timer(0);
 
   LOG("Initialization finished\n", 0);
+
   kernel_init(&hw);
   for (;;) {
     __asm__ __volatile__("wfi");
