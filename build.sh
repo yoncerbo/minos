@@ -20,11 +20,11 @@ build() {
 
   case "$TARGET" in
     "rv32-sbi")
-      $CC $CFLAGS -Wl,-T$DIR/linker.ld -Wl,-Map=$OUT/kernel.map \
+      $CC $CFLAGS -Wl,-T$DIR/linker.ld -Wl,-Map=$OUT/kernel.map -DARCH_RV32 \
         -o $OUT/kernel.elf $DIR/main.c $DIR/boot.s
       ;;
     "x64-uefi")
-      clang $CFLAGS $UEFI_FLAGS -o $OUT/BOOTX64.EFI $DIR/main.c
+      clang $CFLAGS $UEFI_FLAGS -o $OUT/BOOTX64.EFI $DIR/main.c -DARCH_X64
       mcopy -i fat.img $OUT/BOOTX64.EFI ::/EFI/BOOT -D o
       ;;
     *)

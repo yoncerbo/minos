@@ -19,3 +19,12 @@ void draw_line(Surface *surface, int x, int y, uint32_t color, const char *str, 
     draw_char(surface, x + i * 8, y, color, str[i]);
   }
 }
+
+void fill_surface(Surface *surface, uint32_t color) {
+  for (uint32_t y = 0; y < surface->height; ++y) {
+    uint32_t *row = (uint32_t *)((uint8_t *)surface->ptr + y * surface->pitch);
+    for (uint32_t x = 0; x < surface->width; ++x) {
+      row[x] = color;
+    }
+  }
+}
