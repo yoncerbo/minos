@@ -26,7 +26,7 @@
           mtools
         ];
         shellHook = "export CC=clang";
-        OVMF_FD = "${pkgs.OVMF.fd}/FD/OVMF.fd";
+        OVMF_FD = "${pkgs.OVMF.fd}/FV/OVMF.fd";
       };
     };
   };
