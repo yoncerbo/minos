@@ -6,6 +6,7 @@
 extern char BSS_START[], BSS_END[], STACK_TOP[];
 extern char HEAP_START[], HEAP_END[], KERNEL_BASE[];
 
+#define WFI() __asm__ __volatile__ ("wfi")
 #define PAGE_SIZE 4096
 
 // src/uart.c

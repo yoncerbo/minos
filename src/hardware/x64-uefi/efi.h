@@ -7,6 +7,8 @@
 
 typedef uint16_t wchar_t;
 
+#define EFIAPI __attribute__((ms_abi))
+
 #define EFI_ERROR(a) ((a) | ~(((size_t)-1) >> 1))
 #define IS_EFI_ERROR(a) ((a) & ~(((size_t)-1) >> 1))
 
@@ -61,9 +63,9 @@ typedef struct {
 } EfiGraphicsMode;
 
 typedef struct {
-  size_t (*query_mode)(void *this, uint32_t mode_number, size_t *out_info_size, EfiGraphicsModeInfo **out_info);
-  size_t (*set_mode)(void *this, uint32_t mode_number);
-  size_t (*blt)(void *this);
+  size_t (EFIAPI *query_mode)(void *this, uint32_t mode_number, size_t *out_info_size, EfiGraphicsModeInfo **out_info);
+  size_t (EFIAPI *set_mode)(void *this, uint32_t mode_number);
+  size_t (EFIAPI *blt)(void *this);
   EfiGraphicsMode *mode;
 } EfiGraphicsOutputProtocol;
 
@@ -72,23 +74,23 @@ typedef struct {
 } EfiDevicePath;
 
 typedef enum {
-    EfiReservedMemoryType,
-    EfiLoaderCode,
-    EfiLoaderData,
-    EfiBootServicesCode,
-    EfiBootServicesData,
-    EfiRuntimeServicesCode,
-    EfiRuntimeServicesData,
-    EfiConventionalMemory,
-    EfiUnusableMemory,
-    EfiACPIReclaimMemory,
-    EfiACPIMemoryNVS,
-    EfiMemoryMappedIO,
-    EfiMemoryMappedIOPortSpace,
-    EfiPalCode,
-    EfiPersistentMemory,
-    EfiUnacceptedMemoryType,
-    EfiMaxMemoryType
+    EFI_RESERVED_MEMORY_TYPE,
+    EFI_LOADER_CODE,
+    EFI_LOADER_DATA,
+    EFI_BOOT_SERVICES_CODE,
+    EFI_BOOT_SERVICES_DATA,
+    EFI_RUNTIME_SERVICES_CODE,
+    EFI_RUNTIME_SERVICES_DATA,
+    EFI_CONVENTIONAL_MEMORY,
+    EFI_UNUSABLE_MEMORY,
+    EFI_ACPIRECLAIM_MEMORY,
+    EFI_ACPIMEMORY_NVS,
+    EFI_MEMORY_MAPPED_IO,
+    EFI_MEMORY_MAPPED_IOPORT_SPACE,
+    EFI_PAL_CODE,
+    EFI_PERSISTENT_MEMORY,
+    EFI_UNACCEPTED_MEMORY_TYPE,
+    EFI_MAX_MEMORY_TYPE
 } EfiMemoryType;
 
 typedef struct {
@@ -117,8 +119,8 @@ typedef struct {
 } EfiInputKey;
 
 typedef struct {
-  size_t (*reset)(void *this, bool extended_verification);
-  size_t (*read_key_stroke)(void *this, EfiInputKey *key);
+  size_t (EFIAPI *reset)(void *this, bool extended_verification);
+  size_t (EFIAPI *read_key_stroke)(void *this, EfiInputKey *key);
   void *wait_for_key;
 } EfiSimpleTextInputProtocol;
 
@@ -128,15 +130,15 @@ typedef struct {
 } SimpleTextOutputMode;
 
 typedef struct {
-  size_t (*reset)(void *this, bool extended_verification);
-  size_t (*output_string)(void *this, const wchar_t *string);
+  size_t (EFIAPI *reset)(void *this, bool extended_verification);
+  size_t (EFIAPI *output_string)(void *this, const wchar_t *string);
   void *test_string;
-  size_t (*query_mode)(void *this, size_t mode_number, size_t *columns, size_t *rows);
+  size_t (EFIAPI *query_mode)(void *this, size_t mode_number, size_t *columns, size_t *rows);
   void *set_mode;
-  size_t (*set_attribute)(void *this, size_t attribute);
-  size_t (*clear_screen)(void *this);
-  size_t (*set_cursor_position)(void *this, size_t columne, size_t row);
-  size_t (*enable_cursor)(void *this, uint8_t visible);
+  size_t (EFIAPI *set_attribute)(void *this, size_t attribute);
+  size_t (EFIAPI *clear_screen)(void *this);
+  size_t (EFIAPI *set_cursor_position)(void *this, size_t columne, size_t row);
+  size_t (EFIAPI *enable_cursor)(void *this, uint8_t visible);
   SimpleTextOutputMode *mode;
 } EfiSimpleTextOutputProtocol;
 
@@ -156,19 +158,19 @@ typedef struct EfiFileHandle EfiFileHandle;
 
 struct EfiFileHandle {
   uint64_t revision;
-  size_t (*open)(EfiFileHandle *file, EfiFileHandle **out_new_file, const wchar_t *filename,
+  size_t (EFIAPI *open)(EfiFileHandle *file, EfiFileHandle **out_new_file, const wchar_t *filename,
       uint64_t mode, uint64_t attributes);
-  size_t (*close)(EfiFileHandle *file);
-  size_t (*delete)(EfiFileHandle *file);
-  size_t (*read)(EfiFileHandle *file, size_t *buffer_size, void *buffer);
-  size_t (*write)(EfiFileHandle *file, size_t *buffer_size, void *buffer);
-  size_t (*get_pos)(EfiFileHandle *file, uint64_t *out_position);
-  size_t (*set_pos)(EfiFileHandle *file, uint64_t position);
-  size_t (*get_info)(EfiFileHandle *file, const EfiGuid *info_type,
+  size_t (EFIAPI *close)(EfiFileHandle *file);
+  size_t (EFIAPI *delete)(EfiFileHandle *file);
+  size_t (EFIAPI *read)(EfiFileHandle *file, size_t *buffer_size, void *buffer);
+  size_t (EFIAPI *write)(EfiFileHandle *file, size_t *buffer_size, void *buffer);
+  size_t (EFIAPI *get_pos)(EfiFileHandle *file, uint64_t *out_position);
+  size_t (EFIAPI *set_pos)(EfiFileHandle *file, uint64_t position);
+  size_t (EFIAPI *get_info)(EfiFileHandle *file, const EfiGuid *info_type,
       size_t *buffer_size, void *buffer);
-  size_t (*set_info)(EfiFileHandle *file, const EfiGuid *info_type,
+  size_t (EFIAPI *set_info)(EfiFileHandle *file, const EfiGuid *info_type,
       size_t *buffer_size, void *buffer);
-  size_t (*flush)(EfiFileHandle *file);
+  size_t (EFIAPI *flush)(EfiFileHandle *file);
 };
 
 typedef struct {
@@ -190,8 +192,25 @@ typedef struct {
 
 typedef struct {
   uint64_t revision;
-  size_t (*volume_open)(void *this, EfiFileHandle **out_root);
+  size_t (EFIAPI *volume_open)(void *this, EfiFileHandle **out_root);
 } EfiSimpleFileSystemProtocol;
+
+#define EFI_MEMORY_UC              0x0000000000000001
+#define EFI_MEMORY_WC              0x0000000000000002
+#define EFI_MEMORY_WT              0x0000000000000004
+#define EFI_MEMORY_WB              0x0000000000000008
+#define EFI_MEMORY_UCE             0x0000000000000010
+#define EFI_MEMORY_WP              0x0000000000001000
+#define EFI_MEMORY_RP              0x0000000000002000
+#define EFI_MEMORY_XP              0x0000000000004000
+#define EFI_MEMORY_NV              0x0000000000008000
+#define EFI_MEMORY_MORE_RELIABLE   0x0000000000010000
+#define EFI_MEMORY_RO              0x0000000000020000
+#define EFI_MEMORY_SP              0x0000000000040000
+#define EFI_MEMORY_CPU_CRYPTO      0x0000000000080000
+#define EFI_MEMORY_RUNTIME         0x8000000000000000
+#define EFI_MEMORY_ISA_VALID       0x4000000000000000
+#define EFI_MEMORY_ISA_MASK        0x0FFFF00000000000
 
 typedef struct {
   uint32_t type;
@@ -209,7 +228,7 @@ typedef struct {
 
   void *allocate_pages;
   void *free_pages;
-  size_t (*get_memory_map)(size_t *memory_map_size, EfiMemoryDescriptor *memory_map,
+  size_t (EFIAPI *get_memory_map)(size_t *memory_map_size, EfiMemoryDescriptor *memory_map,
       size_t *map_key, size_t *descriptor_size, uint32_t *descriptor_version);
   void *allocate_pool;
   void *free_pool;
@@ -224,7 +243,7 @@ typedef struct {
   void *install_protocol_interface;
   void *reinstall_protocol_interface;
   void *uninstall_protocol_interface;
-  size_t (*handle_protocol)(void *handle, const EfiGuid *protocol, void **out_interface);
+  size_t (EFIAPI *handle_protocol)(void *handle, const EfiGuid *protocol, void **out_interface);
   void *pc_handle_protocol;
   void *register_protocol_notify;
   void *locate_handle;
@@ -235,7 +254,7 @@ typedef struct {
   void *start_image;
   void *exit;
   void *unload_image;
-  size_t (*exit_boot_services)(void *image_handle, size_t map_key);
+  size_t (EFIAPI *exit_boot_services)(void *image_handle, size_t map_key);
 
   void *get_next_high_monotonic_count;
   void *stall;
@@ -250,7 +269,7 @@ typedef struct {
 
   void *protocols_per_handle;
   void *locate_handle_buffer;
-  size_t (*locate_protocol)(const EfiGuid *protocol, void *registration, void **out_interface);
+  size_t (EFIAPI *locate_protocol)(const EfiGuid *protocol, void *registration, void **out_interface);
   void *install_multiple_protocol_interfaces;
   void *uninstall_multiple_protocol_interfaces;
 

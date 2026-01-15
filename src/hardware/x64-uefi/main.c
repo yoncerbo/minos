@@ -1,4 +1,5 @@
 #include "common.h"
+#include "arch.h"
 #include "efi.h"
 
 EfiSimpleTextOutputProtocol *stderr;
@@ -73,7 +74,7 @@ size_t read_efi_file(EfiFileHandle *file, void *buffer, size_t limit) {
   return limit;
 }
 
-EfiMemoryDescriptor MEMORY_MAP[512];
+EfiMemoryDescriptor MEMORY_MAP[1024];
 
 size_t efi_setup(void *image_handle, EfiSystemTable *st, Surface *surface, size_t *memory_map_size) {
   stderr = st->con_out;
@@ -170,13 +171,38 @@ size_t efi_main(void *image_handle, EfiSystemTable *st) {
   size_t status = efi_setup(image_handle, st, &surface, &memory_map_size);
   if (IS_EFI_ERROR(status)) return status;
 
+  size_t best_page_count = 0;
+  vaddr_t memory = 0;
+
   int count = memory_map_size / sizeof(MEMORY_MAP[0]);
   for (int i = 0; i < count; ++i) {
     EfiMemoryDescriptor *desc = &MEMORY_MAP[i];
-    DEBUGD(desc->physical_start);
-    DEBUGD(desc->number_of_pages);
+    if (desc->type != EFI_CONVENTIONAL_MEMORY) continue;
+    if (desc->number_of_pages <= best_page_count) continue;
+    best_page_count = desc->number_of_pages;
+    memory = desc->virtual_start;
   }
 
-  for (;;) __asm__ __volatile__("hlt");
+  ASSERT(best_page_count);
+  LOG("Memory info: page_count=%d, start=0x%d\n", best_page_count, memory);
+
+  // NOTE: Disable interrupts for setting up GDT and TSS
+  ASM("cli");
+
+  uint64_t tss_base = (uint64_t)&TSS;
+  GDT_TABLE[5] = (GdtEntry)GDT_ENTRY(tss_base, sizeof(TSS) - 1, 0x89, 0xA);
+  // *(uint32_t *)&GDT_TABLE[7] = (uint32_t)(tss_base >> 32);
+  GDT_TABLE[6].limit0_15 = (tss_base >> 32) & 0xFFFF;
+  GDT_TABLE[6].base0_15 = (tss_base >> 48) & 0xFFFF;
+
+  GdtTablePtr gdt_table_ptr = { sizeof(GDT_TABLE) - 1, (uint64_t)&GDT_TABLE };
+  load_gdt_table(&gdt_table_ptr);
+
+  LOG("Setup finished\n", 0);
+
+  for (;;) {
+    WFI();
+  }
+
 }
 

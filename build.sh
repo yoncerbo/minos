@@ -8,9 +8,16 @@ CFLAGS="$CFLAGS
   -Wall -Wextra -pedantic-errors
   -Wno-unused-parameter -Wno-unused-const-variable -Wno-unused-variable -Wno-unused-function
   -fno-stack-protector -ffreestanding
+  -mgeneral-regs-only
   -nostdlib"
 
-UEFI_FLAGS="-target x86_64-uknown-windows -fshort-wchar -Wl,-entry:efi_main, -Wl,-subsystem:efi_application -fuse-ld=lld-link -mno-red-zone -masm=intel"
+UEFI_FLAGS="-target x86_64-unknown-windows
+  -fshort-wchar
+  -Wl,-entry:efi_main,
+  -Wl,-subsystem:efi_application
+  -fuse-ld=lld
+  -mno-red-zone
+  -masm=intel"
 
 DIR=src/hardware/$TARGET
 OUT=out/$TARGET
@@ -24,7 +31,7 @@ build() {
         -o $OUT/kernel.elf $DIR/main.c $DIR/boot.s
       ;;
     "x64-uefi")
-      clang $CFLAGS $UEFI_FLAGS -o $OUT/BOOTX64.EFI $DIR/main.c -DARCH_X64
+      clang $CFLAGS $UEFI_FLAGS -o $OUT/BOOTX64.EFI $DIR/main.c $DIR/utils.s -DARCH_X64
       mcopy -i fat.img $OUT/BOOTX64.EFI ::/EFI/BOOT -D o
       ;;
     *)
@@ -55,7 +62,9 @@ run() {
         # -device virtio-sound-device,bus=virtio-mmio-bus.6,audiodev=audiodev0 \
       ;;
     "x64-uefi")
-      qemu-system-x86_64 -bios $OVMF_FD fat.img
+      qemu-system-x86_64 -bios $OVMF_FD fat.img \
+        -m 1G \
+        -serial mon:stdio
       ;;
     *)
       echo "Unknown taret '$TARGET'"

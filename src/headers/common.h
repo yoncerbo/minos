@@ -42,6 +42,7 @@ typedef struct {
 #define true 1
 #define false 0
 
+#define ASM __asm__ __volatile__
 #define TRAP __builtin_trap
 #define PACKED __attribute__((packed))
 #define ALIGNED(n) __attribute__((aligned(n)))
@@ -86,10 +87,11 @@ uint32_t __bswapsi2(uint32_t u);
   for (;;) __asm__ __volatile__("wfi"); \
 } while (0)
 
+
 #define ASSERT(expr) do { \
   if (!(expr)) { \
     printf("[ASSERT] %s " __FILE__ ":" STRINGIFY(__LINE__) ": " STRINGIFY(expr) "\n", __func__); \
-    for (;;) __asm__ __volatile__("wfi"); \
+    for (;;) WFI(); \
   } \
 } while (0)
 
