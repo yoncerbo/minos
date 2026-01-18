@@ -3,7 +3,7 @@ set -o pipefail
 set -e
 
 CFLAGS="$CFLAGS
-  -std=c99 -O2
+  -std=c99 -O1
   -I ./src -I ./src/headers
   -Wall -Wextra -pedantic-errors
   -Wno-unused-parameter -Wno-unused-const-variable -Wno-unused-variable -Wno-unused-function
@@ -12,15 +12,16 @@ CFLAGS="$CFLAGS
   -static
   -mgeneral-regs-only
   -nostdlib
-  -g -gdwarf
 "
 
 CLANG_UEFI_FLAGS="-target x86_64-pc-win32-coff
+  -DBUILD_DEBUG
   -fshort-wchar
   -Wl,-entry:efi_main,
   -Wl,-subsystem:efi_application
   -Wl,/base:0
   -fuse-ld=lld-link
+  -g -gdwarf
   -mno-red-zone
   -masm=intel"
 
@@ -36,15 +37,6 @@ build() {
         -o $OUT/kernel.elf $DIR/main.c $DIR/boot.s
       ;;
     "x64-uefi")
-      # $CC $CFLAGS \
-      #   -fpic -shared -fshort-wchar -mno-red-zone -masm=intel \
-      #   -Wl,-T,$DIR/linker.ld -Wl,-Bsymbolic -Wl,-znocombreloc \
-      #   -o $OUT/kernel.elf $DIR/main.c $DIR/utils.s -DARCH_X64
-      # x86_64-w64-mingw32-objcopy  \
-      #   -j .text -j .sdata -j .data -j .dynamic -j .dynsym \
-      #   -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc \
-      #   --target pei-x86-64 --subsystem=10  \
-      #   $OUT/kernel.elf $OUT/BOOTX64.EFI
       clang $CFLAGS $CLANG_UEFI_FLAGS -o $OUT/BOOTX64.EFI $DIR/main.c $DIR/utils.s -DARCH_X64
       mcopy -i fat.img $OUT/BOOTX64.EFI ::/EFI/BOOT -D o
       ;;

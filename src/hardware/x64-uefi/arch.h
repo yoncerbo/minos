@@ -146,4 +146,11 @@ typedef struct {
 
 NORETURN void user_main(void);
 
+struct {
+  Surface fb;
+  size_t memory_map_size;
+  size_t memory_descriptor_size;
+  size_t image_base;
+} BOOT_CONFIG;
+
 #endif

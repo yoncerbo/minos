@@ -1,10 +1,37 @@
 #include "common.h"
+#include "arch.h"
 #include "efi.h"
 
 void assert_ok(size_t status, EfiSimpleTextOutputProtocol *out, const wchar_t *error_message) {
   if (IS_EFI_ERROR(status)) {
     out->output_string(out, error_message);
     __builtin_trap();
+  }
+}
+
+SYSV void putchar_surface(char ch) {
+  const uint32_t MARGIN = 16;
+  const uint32_t HEIGHT = 16;
+  const uint32_t WIDTH = 8;
+
+  static uint32_t x = MARGIN; 
+  static uint32_t y = MARGIN;
+
+  if (x >= BOOT_CONFIG.fb.width) {
+    x = MARGIN;
+    y += HEIGHT;
+  }
+
+  if (y >= BOOT_CONFIG.fb.height) {
+    return;
+  }
+
+  if (ch == '\n') {
+    x = MARGIN;
+    y += HEIGHT;
+  } else {
+    draw_char(&BOOT_CONFIG.fb, x, y, WHITE, ch);
+    x += WIDTH;
   }
 }
 
@@ -32,9 +59,26 @@ size_t read_efi_file(EfiFileHandle *file, void *buffer, size_t limit) {
   return limit;
 }
 
+EfiSimpleTextOutputProtocol *efiout;
 
-size_t efi_setup(void *image_handle, EfiSystemTable *st, Surface *surface, uint8_t *memory_map, size_t *memory_map_size, size_t *memory_descriptor_size) {
+SYSV void putchar_efi(char ch) {
+  if (ch == '\n') {
+    efiout->output_string(efiout, L"\n\r");
+  } else {
+    efiout->output_string(efiout, (wchar_t[]){ch, 0});
+  }
+}
+
+// TODO: Allocate a buffer instead
+uint8_t MEMORY_MAP[1024 * 32];
+ALIGNED(16) uint8_t KERNEL_STACK[8 * 1024];
+
+EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
+  efiout = st->con_out;
+  putchar = putchar_efi;
+
   size_t status = 0;
+
   EfiGraphicsOutputProtocol *gop;
 
   status = st->boot_services->locate_protocol(&EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, NULL, (void **)&gop);
@@ -60,22 +104,26 @@ size_t efi_setup(void *image_handle, EfiSystemTable *st, Surface *surface, uint8
   }
 
   // TODO: Handle different formats
-  *surface = (Surface){
+  BOOT_CONFIG.fb = (Surface){
     .ptr = gop->mode->frame_buffer_base,
     .width = info->width,
     .height = info->height,
     .pitch = info->pixel_per_scan_line * 4,
   };
-  fill_surface(surface, 0xff111111);
+  fill_surface(&BOOT_CONFIG.fb, 0xff111111);
+  putchar = putchar_surface;
 
   EfiLoadedImageProtocol *loaded_image;
   status = st->boot_services->handle_protocol(image_handle, &EFI_LOADED_IMAGE_PROTOCOL_GUID, (void **)&loaded_image);
   assert_ok(status, st->con_out, L"Failed to load image protocol");
+  BOOT_CONFIG.image_base = (size_t)loaded_image->image_base;
 
+#ifdef BUILD_DEBUG
   volatile uint64_t *gdb_marker = (void *)0x10000;
   volatile uint64_t *image_base_ptr = (void *)(0x10000 + 8);
   *image_base_ptr = (size_t)loaded_image->image_base;
   *gdb_marker = 0xDEADBEEF;
+#endif
 
   EfiSimpleFileSystemProtocol *file_system;
   status = st->boot_services->handle_protocol(loaded_image->device_handle,
@@ -92,10 +140,12 @@ size_t efi_setup(void *image_handle, EfiSystemTable *st, Surface *surface, uint8
 
   size_t map_key, descriptor_size;
   uint32_t descriptor_version;
+  size_t memory_map_size = sizeof(MEMORY_MAP);
+  size_t memory_descriptor_size;
 
   do {
-    status = st->boot_services->get_memory_map(memory_map_size, memory_map, &map_key,
-        memory_descriptor_size, &descriptor_version);
+    status = st->boot_services->get_memory_map(&memory_map_size, MEMORY_MAP, &map_key,
+        &memory_descriptor_size, &descriptor_version);
     if (status == EFI_BUFFER_TOO_SMALL) {
       st->con_out->output_string(st->con_out, L"Memory map buffer too small");
       TRAP();
@@ -108,6 +158,13 @@ size_t efi_setup(void *image_handle, EfiSystemTable *st, Surface *surface, uint8
     }
   } while (IS_EFI_ERROR(status));
 
-  return status;
+  BOOT_CONFIG.memory_map_size = memory_map_size;
+  BOOT_CONFIG.memory_descriptor_size = memory_descriptor_size;
+
+  // NOTE: The current stack in in the UEFI boot data memory,
+  // we need to set up a new stack
+  uint8_t *stack_top = &KERNEL_STACK[sizeof(KERNEL_STACK) - 1];
+  ASM("mov rsp, %0 \n jmp kernel_main" :: "g"(stack_top));
+  UNREACHABLE();
 }
 
