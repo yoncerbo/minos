@@ -109,10 +109,10 @@ typedef struct {
   paddr_t start;
   size_t page_count;
   size_t page_offset;
+  PageTable *pml4;
 } PageAllocator;
 
-PageAllocator GLOBAL_PAGE_ALLOCATOR = {0};
-
+paddr_t reserve_pages(PageAllocator *allocator, size_t page_count);
 paddr_t alloc_pages(PageAllocator *allocator, size_t page_count);
 void map_page_identity(PageAllocator *alloc, PageTable *level4_table, size_t addr, size_t flags);
 void map_range_identity(PageAllocator *alloc, PageTable *level4_table,
@@ -121,7 +121,6 @@ void map_range_identity(PageAllocator *alloc, PageTable *level4_table,
 SYSV extern void load_gdt_table(GdtPtr *gdt_table_ptr);
 SYSV extern void enable_system_calls(void *kernel_gs_base);
 SYSV extern size_t run_user_program(void (*user_main)(void), void *stack_top);
-SYSV extern void load_page_table(PageTable *level4_table);
 SYSV extern void putchar_qemu_debugcon(char ch);
 
 ALIGNED(PAGE_SIZE) PageTable PML4;

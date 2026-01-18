@@ -1,11 +1,17 @@
 #include "common.h"
 #include "arch.h"
 
+paddr_t reserve_pages(PageAllocator *allocator, size_t page_count) {
+  ASSERT(allocator->page_offset + page_count < allocator->page_count);
+  paddr_t addr = allocator->start + allocator->page_offset * PAGE_SIZE;
+  allocator->page_offset += page_count;
+  return addr;
+}
+
 // Returns zeroed page
 paddr_t alloc_pages(PageAllocator *allocator, size_t page_count) {
   ASSERT(allocator->page_offset + page_count < allocator->page_count);
   paddr_t addr = allocator->start + allocator->page_offset * PAGE_SIZE;
-  memset((void *)addr, 0, PAGE_SIZE * page_count);
   allocator->page_offset += page_count;
   return addr;
 }

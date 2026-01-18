@@ -21,11 +21,12 @@ SyscallError sys_log(const char *str, size_t limit) {
 
 NORETURN void sys_exit(size_t error_code) {
   size_t result = SYS_EXIT;
-  ASM("syscall" : "+a"(result) : "D"(error_code));
+  ASM("syscall" :: "a"(result), "D"(error_code));
   UNREACHABLE();
 }
 
 SYSV size_t handle_syscall(SyscallFrame *frame) {
+  ASSERT(frame);
   // TODO: Getting kernel thread context
   switch (frame->rax) {
     case SYS_LOG: {
@@ -41,6 +42,7 @@ SYSV size_t handle_syscall(SyscallFrame *frame) {
       }
     } break;
     case SYS_EXIT: {
+      frame->rax = frame->rdi;
       return 1;
     } break;
     default: {

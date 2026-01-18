@@ -278,7 +278,7 @@ typedef struct {
 
 typedef struct {
   EfiTableHeader header;
-  void *firmware_vendor;
+  wchar_t *firmware_vendor;
   uint32_t firmware_revision;
   void *console_in_handle;
   EfiSimpleTextInputProtocol *con_in;

@@ -138,15 +138,8 @@ enable_system_calls:
   mov ecx, MSR_GS_BAS
   wrmsr
 
-  ret
-
-.global load_page_table
-# inputs:
-#   rdi: page table pointer
-load_page_table:
-  mov rax, 0x000ffffffffff000
-  and rdi, rax
-  mov cr3, rdi
+  swapgs // we're in kernel, so we're gonna use
+         // kernel gs base
   ret
 
 .global run_user_program
@@ -154,14 +147,12 @@ load_page_table:
 #   rdi: user function pointer
 #   rsi: user stack pointer
 run_user_program:
-  swapgs // swap into gernel context to save kernel sp
-
   mov gs:CTX_KERNEL_SP, rsp
   mov rcx, rdi // new instruction pointer
   mov rsp, rsi // new stack pointer
   mov r11, 0x0202 // eflags
 
-  swapgs
+  swapgs // swap into user gs base
   // SOURCE: https://www.felixcloutier.com/x86/sysret
   sysretq
 
