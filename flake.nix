@@ -16,9 +16,11 @@
           gnumake
         ];
       };
-      x64 = pkgs.mkShell rec {
+      x64 = pkgs.pkgsCross.x86_64-embedded.mkShell rec {
+      # x64 = pkgs.pkgsCross.mingwW64.mkShell rec {
         TARGET = "x64-uefi";
         packages = with pkgs; [
+          pkgsCross.mingwW64.buildPackages.gcc
           clang.cc
           lld
           bear
@@ -26,7 +28,8 @@
           mtools
           llvmPackages.bintools
         ];
-        shellHook = "export CC=clang";
+        GNU_EFI = "${pkgs.gnu-efi}";
+        # shellHook = "export CC=clang";
         OVMF_FD = "${pkgs.OVMF.fd}/FV/OVMF.fd";
       };
     };

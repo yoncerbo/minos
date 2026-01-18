@@ -77,6 +77,7 @@ NORETURN SYSV void kernel_main(KernelConfig *config) {
   KernelThreadContext thread_context = {0};
   enable_system_calls(&thread_context);
 
+  printf("Running user program\n");
   size_t status;
   status = run_user_program(user_main, (void *)&USER_STACK[sizeof(USER_STACK) - 1]);
   DEBUGD(status);
@@ -88,7 +89,7 @@ NORETURN SYSV void kernel_main(KernelConfig *config) {
   for (;;) WFI();
 }
 
-size_t efi_main(void *image_handle, EfiSystemTable *st) {
+EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
   efiout = st->con_out;
   putchar = putchar_efi;
 
@@ -169,9 +170,11 @@ size_t efi_main(void *image_handle, EfiSystemTable *st) {
   // NOTE: After switching to the new page table, we can't use the current stack pointer,
   // because it points the unmapped memory region - UEFI data
   // we have to set up a new stack
-  ASM("mov cr3, %0" :: "r"((size_t)pml4 & PAGE_ADDR_MASK));
-  ASM("mov rsp, %0" :: "g"(&KERNEL_STACK[sizeof(KERNEL_STACK) - 1]));
-  ASM("jmp kernel_main" :: "D"(config));
+  uint8_t *stack_top = &KERNEL_STACK[sizeof(KERNEL_STACK) - 1];
+  ASM("mov rsp, %0 \n"
+      "mov cr3, %1 \n"
+      "jmp kernel_main"
+    :: "g"(stack_top), "r"((size_t)pml4 & PAGE_ADDR_MASK), "D"(config));
   UNREACHABLE();
 }
 

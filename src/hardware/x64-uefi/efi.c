@@ -72,6 +72,11 @@ size_t efi_setup(void *image_handle, EfiSystemTable *st, Surface *surface, uint8
   status = st->boot_services->handle_protocol(image_handle, &EFI_LOADED_IMAGE_PROTOCOL_GUID, (void **)&loaded_image);
   assert_ok(status, st->con_out, L"Failed to load image protocol");
 
+  volatile uint64_t *gdb_marker = (void *)0x10000;
+  volatile uint64_t *image_base_ptr = (void *)(0x10000 + 8);
+  *image_base_ptr = (size_t)loaded_image->image_base;
+  *gdb_marker = 0xDEADBEEF;
+
   EfiSimpleFileSystemProtocol *file_system;
   status = st->boot_services->handle_protocol(loaded_image->device_handle,
       &EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID, (void **)&file_system);

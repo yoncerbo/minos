@@ -1,3 +1,4 @@
+.intel_syntax noprefix
 
 .section .text
 
@@ -5,7 +6,7 @@
 .equ GDT_KERNEL_DATA, 2
 .equ GDT_TSS_LOW, 5
 
-// SOURCE: https://sandpile.org/x86/msr.htm
+# SOURCE: https://sandpile.org/x86/msr.htm
 
 .equ MSR_EFER, 0xC0000080
 .equ MSR_STAR, 0xC0000081
@@ -50,7 +51,7 @@ load_gdt_table:
 
 USER_SP: .quad 0
 syscall_stub:
-  swapgs // swap KERNEL_GS_BAS and GS_BAS MSRs
+  swapgs # swap KERNEL_GS_BAS and GS_BAS MSRs
   mov gs:CTX_USER_SP, rsp
   mov rsp, gs:CTX_KERNEL_SP
 
@@ -64,9 +65,9 @@ syscall_stub:
   push rdi
   push rax
 
-  // system v calling convention
-  // preserved by the function: rbx, rsp, rbp, r12, r13, r14, r15
-  // scrathch registers: rax, rdi, rsi, rdx, rcx, r8, r9, r10, r11
+  # system v calling convention
+  # preserved by the function: rbx, rsp, rbp, r12, r13, r14, r15
+  # scrathch registers: rax, rdi, rsi, rdx, rcx, r8, r9, r10, r11
   mov rdi, rsp
   call handle_syscall
   test rax, rax
@@ -87,20 +88,20 @@ syscall_stub:
   sysretq
 
 .user_program_exit:
-  pop rax // return code is in the rax
+  pop rax # return code is in the rax
   add rsp, 8 * 8
-  // NOTE: The rsp in set for kernel stack.
-  // We entered use program from a function call.
-  // The return address is on the kernel stack.
-  // We can just return.
+  # NOTE: The rsp in set for kernel stack.
+  # We entered use program from a function call.
+  # The return address is on the kernel stack.
+  # We can just return.
   ret
 
 .global enable_system_calls
 # input:
 #   rdi: kernel gs base pointer
 enable_system_calls:
-  // SOURCE: https://sandpile.org/x86/msr.htm
-  // NOTE: wrms - msr in ecx, low in eax, high in edx
+  # SOURCE: https://sandpile.org/x86/msr.htm
+  # NOTE: wrms - msr in ecx, low in eax, high in edx
 
   mov ecx, MSR_EFER
   rdmsr
@@ -138,8 +139,8 @@ enable_system_calls:
   mov ecx, MSR_GS_BAS
   wrmsr
 
-  swapgs // we're in kernel, so we're gonna use
-         // kernel gs base
+  swapgs # we're in kernel, so we're gonna use
+         # kernel gs base
   ret
 
 .global run_user_program
@@ -148,12 +149,12 @@ enable_system_calls:
 #   rsi: user stack pointer
 run_user_program:
   mov gs:CTX_KERNEL_SP, rsp
-  mov rcx, rdi // new instruction pointer
-  mov rsp, rsi // new stack pointer
-  mov r11, 0x0202 // eflags
+  mov rcx, rdi # new instruction pointer
+  mov rsp, rsi # new stack pointer
+  mov r11, 0x0202 # eflags
 
-  swapgs // swap into user gs base
-  // SOURCE: https://www.felixcloutier.com/x86/sysret
+  swapgs # swap into user gs base
+  # SOURCE: https://www.felixcloutier.com/x86/sysret
   sysretq
 
 .global putchar_qemu_debugcon
