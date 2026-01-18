@@ -28,18 +28,25 @@ void printf(const char *fmt, ...) {
         uint32_t v = va_arg(vargs, uint32_t);
         for (int i = 7; i >= 0; i--) {
           uint32_t nibble = (v >> (i * 4)) & 0xf;
-          putchar("0123456789abcdef"[nibble]);
+          putchar("0123456789ABCDEF"[nibble]);
+        }
+      } break;
+      case 'X': {
+        uint64_t v = va_arg(vargs, uint64_t);
+        for (int i = 15; i >= 0; i--) {
+          uint64_t nibble = (v >> (i * 4)) & 0xf;
+          putchar("0123456789ABCDEF"[nibble]);
         }
       } break;
       case 'd': {
-        int32_t value = va_arg(vargs, int);
-        uint32_t  magnitude = value;
+        isize_t value = va_arg(vargs, isize_t);
+        size_t  magnitude = value;
         if (value < 0) {
           putchar('-');
           magnitude = -magnitude;
         }
 
-        uint32_t divisor = 1;
+        size_t divisor = 1;
         while (magnitude / divisor > 9) divisor *= 10;
         while (divisor > 0) {
           putchar('0' + magnitude / divisor);

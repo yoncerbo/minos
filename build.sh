@@ -62,9 +62,12 @@ run() {
         # -device virtio-sound-device,bus=virtio-mmio-bus.6,audiodev=audiodev0 \
       ;;
     "x64-uefi")
-      qemu-system-x86_64 -bios $OVMF_FD fat.img \
+      qemu-system-x86_64 -bios $OVMF_FD \
+        -drive file=fat.img,format=raw,media=disk \
         -m 1G \
-        -serial mon:stdio
+        -debugcon mon:stdio \
+        -no-reboot \
+        # -d int \
       ;;
     *)
       echo "Unknown taret '$TARGET'"

@@ -217,7 +217,6 @@ typedef struct {
   paddr_t physical_start;
   vaddr_t virtual_start;
   uint64_t number_of_pages, attributes;
-  uint64_t _padding;
 } EfiMemoryDescriptor;
 
 typedef struct {
@@ -228,7 +227,7 @@ typedef struct {
 
   void *allocate_pages;
   void *free_pages;
-  size_t (EFIAPI *get_memory_map)(size_t *memory_map_size, EfiMemoryDescriptor *memory_map,
+  size_t (EFIAPI *get_memory_map)(size_t *memory_map_size, void *memory_map,
       size_t *map_key, size_t *descriptor_size, uint32_t *descriptor_version);
   void *allocate_pool;
   void *free_pool;

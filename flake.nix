@@ -24,6 +24,7 @@
           bear
           qemu
           mtools
+          llvmPackages.bintools
         ];
         shellHook = "export CC=clang";
         OVMF_FD = "${pkgs.OVMF.fd}/FV/OVMF.fd";

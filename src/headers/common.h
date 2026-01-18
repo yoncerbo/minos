@@ -23,8 +23,10 @@ CASSERT(sizeof(uint64_t) == 8);
 
 #if defined ARCH_X64
   typedef uint64_t size_t;
+  typedef int64_t isize_t;
 #elif defined ARCH_RV32
   typedef uint32_t size_t;
+  typedef int32_t isize_t;
 #else
 #error "Unknown architecture"
 #endif
@@ -42,10 +44,13 @@ typedef struct {
 #define true 1
 #define false 0
 
+#define SYSV __attribute__((sysv_abi))
 #define ASM __asm__ __volatile__
 #define TRAP __builtin_trap
 #define PACKED __attribute__((packed))
 #define ALIGNED(n) __attribute__((aligned(n)))
+#define NORETURN __attribute__((noreturn))
+#define UNREACHABLE __builtin_unreachable
 #define va_list __builtin_va_list
 #define va_start __builtin_va_start
 #define va_end __builtin_va_end
@@ -57,6 +62,8 @@ typedef struct {
 #define STRINGIFY(x) STRINGIFY_INNER(x) 
 #define CSTR_LEN(str) (sizeof(str) - 1)
 #define STR(str) ((Str){ (str), CSTR_LEN(str) })
+
+#define SIZEOF_IN_PAGES(type) (sizeof(type) + PAGE_SIZE - 1) / PAGE_SIZE
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -95,7 +102,7 @@ uint32_t __bswapsi2(uint32_t u);
   } \
 } while (0)
 
-void (*putchar)(char ch);
+void (SYSV *putchar)(char ch);
 void printf(const char *fmt, ...);
 
 // src/drawing.c
