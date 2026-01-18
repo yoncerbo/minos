@@ -11,6 +11,7 @@ void set_idt_descriptor(InterruptDescriptor *idt, uint8_t descriptor_index, size
     .isr16_31 = (handler >> 16) & 0xFFFF,
     .isr32_63 = handler >> 32,
     .reserved = 0,
+    .interrupt_stack_table = 01,
   };
 }
 

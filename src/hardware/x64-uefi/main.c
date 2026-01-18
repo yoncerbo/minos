@@ -47,6 +47,8 @@ uint8_t MEMORY_MAP[1024 * 32];
 ALIGNED(16) InterruptDescriptor IDT[256] = {0};
 Tss TSS;
 
+uint8_t interrupt_stack[8 * 1024];
+
 size_t efi_main(void *image_handle, EfiSystemTable *st) {
   putchar = putchar_qemu_debugcon;
 
@@ -91,6 +93,7 @@ size_t efi_main(void *image_handle, EfiSystemTable *st) {
   ASM("cli");
   LOG("Interrupts disable\n", 0);
 
+  TSS.ist1 = (size_t)&interrupt_stack[sizeof(interrupt_stack) - 1];
   uint64_t tss_base = (uint64_t)&TSS;
   GDT_TABLE[GDT_TSS_LOW] = (GdtEntry)GDT_ENTRY(tss_base, sizeof(TSS) - 1, 0x89, 0xA);
   // *(uint32_t *)&GDT_TABLE[7] = (uint32_t)(tss_base >> 32);

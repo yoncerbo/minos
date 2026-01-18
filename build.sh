@@ -67,7 +67,7 @@ run() {
         -m 1G \
         -debugcon mon:stdio \
         -no-reboot \
-        # -d int \
+        -d int \
       ;;
     *)
       echo "Unknown taret '$TARGET'"
