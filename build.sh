@@ -10,11 +10,16 @@ CFLAGS="$CFLAGS
   -fno-stack-protector -ffreestanding
   -fno-omit-frame-pointer
   -static
-  -mgeneral-regs-only
   -nostdlib
 "
 
+USER_FLAGS="
+  -Wl,-Tsrc/user/linker.ld
+  -fPIC
+"
+
 CLANG_UEFI_FLAGS="-target x86_64-pc-win32-coff
+  -mgeneral-regs-only
   -DBUILD_DEBUG
   -fshort-wchar
   -Wl,-entry:efi_main,
@@ -37,7 +42,8 @@ build() {
         -o $OUT/kernel.elf $DIR/main.c $DIR/boot.s
       ;;
     "x64-uefi")
-      nasm -fbin src/user/example.s -o out/user/example.bin
+      $CC $CFLAGS $USER_FLAGS src/user/main.c -o out/user/main.bin -DARCH_X64
+      # nasm -fbin src/user/example.s -o out/user/example.bin
       clang -I $DIR $CFLAGS $CLANG_UEFI_FLAGS -o $OUT/BOOTX64.EFI $DIR/main.c $DIR/utils.s -DARCH_X64
       mcopy -i fat.img $OUT/BOOTX64.EFI ::/EFI/BOOT -D o
       ;;

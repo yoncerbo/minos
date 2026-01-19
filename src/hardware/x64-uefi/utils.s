@@ -7,11 +7,13 @@ PSF_FONT_START:
 # .incbin "res/font.psf"
   .incbin "res/font1.psf"
 
+.align 4096
 .global USER_BINARY
 USER_BINARY:
-  .incbin "out/user/example.bin"
-.global USER_BINARY_SIZE
-.equ USER_BINARY_SIZE, (. - USER_BINARY)
+  .incbin "out/user/main.bin"
+.align 4096
+.global USER_BINARY_END
+USER_BINARY_END:
 int3 # A safeguard
 
 .section .text

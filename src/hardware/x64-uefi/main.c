@@ -21,8 +21,8 @@
 ALIGNED(16) InterruptDescriptor IDT[256] = {0};
 Tss TSS;
 
-extern char USER_BINARY[];
-extern size_t USER_BINARY_SIZE;
+// TODO: Only the binary and stack should be mapped with user bit
+extern char USER_BINARY[], USER_BINARY_END[];
 
 // TODO: Setup additional pages for protecting the stack
 ALIGNED(16) uint8_t USER_STACK[8 * 1024];
