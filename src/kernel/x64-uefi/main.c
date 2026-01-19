@@ -5,14 +5,13 @@
 // Source files
 #include "font.h"
 #include "interrupts.c"
-#include "strings.c"
 #include "drawing.c"
 #include "efi.c"
 #include "memory.c"
 #include "syscalls.c"
 #include "user.c"
-#include "print.c"
 #include "logging.c"
+#include "print.c"
 
 // TODO: Better logging system, thread-safe for interrupts, multiple targets
 // TODO: Loading user program from disk

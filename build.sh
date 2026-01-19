@@ -4,7 +4,7 @@ set -e
 
 CFLAGS="$CFLAGS
   -std=c99 -O1
-  -I ./src -I ./src/headers
+  -I ./src 
   -Wall -Wextra -pedantic-errors
   -Wno-unused-parameter -Wno-unused-const-variable -Wno-unused-variable -Wno-unused-function
   -fno-stack-protector -ffreestanding
@@ -30,7 +30,8 @@ CLANG_UEFI_FLAGS="-target x86_64-pc-win32-coff
   -mno-red-zone
   -masm=intel"
 
-DIR=src/hardware/$TARGET
+DIR=src/kernel/$TARGET
+USR=src/user
 OUT=out/$TARGET
 
 build() {
@@ -42,9 +43,11 @@ build() {
         -o $OUT/kernel.elf $DIR/main.c $DIR/boot.s
       ;;
     "x64-uefi")
-      $CC $CFLAGS $USER_FLAGS src/user/main.c -o out/user/main.bin -DARCH_X64
+      $CC $CFLAGS $USER_FLAGS $USR/main.c -o $OUT/user_main.bin -DARCH_X64
       # nasm -fbin src/user/example.s -o out/user/example.bin
-      clang -I $DIR $CFLAGS $CLANG_UEFI_FLAGS -o $OUT/BOOTX64.EFI $DIR/main.c $DIR/utils.s -DARCH_X64
+      clang -I $DIR $CFLAGS $CLANG_UEFI_FLAGS \
+        -o $OUT/BOOTX64.EFI $DIR/main.c $DIR/utils.s -DARCH_X64 \
+        -I ./src/kernel -I ./src/kernel/headers -I $DIR
       mcopy -i fat.img $OUT/BOOTX64.EFI ::/EFI/BOOT -D o
       ;;
     *)
@@ -56,7 +59,7 @@ build() {
 
 X64_QEMU_FLAGS="
   -bios $OVMF_FD -drive file=fat.img,format=raw
-  -m 8G
+  -m 2G
   -smp 4
   -no-reboot -no-shutdown
   -net none

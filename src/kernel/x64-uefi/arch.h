@@ -125,20 +125,6 @@ SYSV extern void putchar_qemu_debugcon(char ch);
 
 ALIGNED(PAGE_SIZE) PageTable PML4;
 
-typedef enum {
-  SYS_LOG = 1,
-  SYS_EXIT = 2,
-} SyscallType;
-
-typedef enum {
-  SYS_OK = 0,
-  SYS_ERR_UNKNOWN_SYSCALL = 1,
-  SYS_ERR_BAD_ARG = 2,
-} SyscallError;
-
-SYSV SyscallError sys_log(const char *str, size_t limit);
-NORETURN SYSV void sys_exit(size_t error_code);
-
 typedef struct {
   size_t kernel_sp;
   size_t user_sp;

@@ -10,7 +10,7 @@ PSF_FONT_START:
 .align 4096
 .global USER_BINARY
 USER_BINARY:
-  .incbin "out/user/main.bin"
+  .incbin "out/x64-uefi/user_main.bin"
 .align 4096
 .global USER_BINARY_END
 USER_BINARY_END:

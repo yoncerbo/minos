@@ -1,4 +1,4 @@
-#include "common.h"
+#include "cmn/lib.h"
 
 void *memcpy(void *dest, const void *src, size_t n) {
   char *d = dest;
