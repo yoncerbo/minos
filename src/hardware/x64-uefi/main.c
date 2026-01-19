@@ -3,6 +3,7 @@
 #include "efi.h"
 
 // Source files
+#include "font.h"
 #include "interrupts.c"
 #include "strings.c"
 #include "drawing.c"
@@ -99,6 +100,8 @@ NORETURN void kernel_main(void) {
   DEBUGD(status);
 
   log("Back in kernel");
+
+  prints(&QEMU_DEBUGCON_SINK, "Hello, World Qemu\n");
 
   for (;;) WFI();
 }

@@ -91,7 +91,7 @@ uint32_t __bswapsi2(uint32_t u);
 
 typedef enum {
   OK = 0,
-  ERR_NOT_ENOUGH_SPACE,
+  ERR_OUT_OF_SPACE,
 } Error;
 
 typedef struct Sink {
@@ -102,27 +102,44 @@ typedef struct {
   uint8_t *ptr;
   uint32_t capacity;
   uint32_t position;
-  Sink *sink;
-} BufferedSink;
+} Buffer;
 
 Error write(Sink *sink, const void *buffer, uint32_t limit);
 Error write_str(Sink *sink, Str str);
 
-void vprints(BufferedSink *buffer, const char *format, va_list vargs);
 void prints(Sink *sink, const char *format, ...);
 
-uint8_t LOG_BUFFER_INNER[64];
-BufferedSink LOG_BUFFER = {
-  .ptr = LOG_BUFFER_INNER,
-  .capacity = 64,
-};
+Sink *LOG_SINK;
 void log(const char *format, ...);
+
+extern char PSF_FONT_START[];
+
+const uint16_t PSF1_MAGIC = 0x0436;
+const uint32_t PSF2_MAGIC = 0x864ab572;
+
+typedef struct {
+  uint16_t magic;
+  uint8_t font_mode;
+  uint8_t character_size;
+} Ps12Header;
+
+typedef struct {
+  uint32_t magic, version, header_size, flags;
+  uint32_t glyph_count, bytes_per_glyph;
+  uint32_t height_pixels, width_pixels;
+} Psf2Header;
 
 // src/drawing.c
 typedef struct {
   uint32_t *ptr;
   uint32_t width, height, pitch;
 } Surface;
+
+typedef struct {
+  uint32_t width, height;
+  uint32_t glyph_size;
+  uint8_t *glyphs;
+} Font;
 
 const uint32_t WHITE = 0xFFFFFFFF;
 const uint32_t BLACK = bswap32(0x000000FF);
@@ -131,9 +148,11 @@ const uint32_t BLUE = bswap32(0x0000FFFF);
 const uint32_t GREEN = bswap32(0x00FF00FF);
 
 void draw_char(Surface *surface, int x, int y, uint32_t color, uint8_t character);
+void draw_char2(Surface *surface, Font *font, int x, int y, uint32_t color, uint8_t character);
 // Draws until limit or null byte
 void draw_line(Surface *surface, int x, int y, uint32_t color, const char *str, uint32_t limit);
 void fill_surface(Surface *surface, uint32_t color);
+void load_psf2_font(Font *out_font, void *file);
 
 #include "interfaces/gpu.h"
 #include "interfaces/blk.h"

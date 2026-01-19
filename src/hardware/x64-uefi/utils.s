@@ -1,5 +1,12 @@
 .intel_syntax noprefix
 
+.section .data
+
+.global PSF_FONT_START
+PSF_FONT_START:
+# .incbin "res/font.psf"
+.incbin "res/font1.psf"
+
 .section .text
 
 .equ GDT_KERNEL_CODE, 1

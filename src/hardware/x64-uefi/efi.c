@@ -80,7 +80,8 @@ ALIGNED(16) uint8_t KERNEL_STACK[8 * 1024];
 
 EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
   EFI_SINK.out = st->con_out;
-  LOG_BUFFER.sink = &EFI_SINK.sink;
+  LOG_SINK = &EFI_SINK.sink;
+  st->con_out->clear_screen(st->con_out);
 
   size_t status = 0;
 
@@ -110,8 +111,10 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
   };
   fill_surface(&BOOT_CONFIG.fb, 0xff111111);
   FB_SINK.surface = BOOT_CONFIG.fb;
-  // LOG_BUFFER.sink = &FB_SINK.sink;
-  LOG_BUFFER.sink = &FB_SINK.sink;
+  load_psf2_font(&FB_SINK.font, PSF_FONT_START);
+  LOG_SINK = &FB_SINK.sink;
+
+  // LOG_SINK = &QEMU_DEBUGCON_SINK;
 
   EfiLoadedImageProtocol *loaded_image;
   status = st->boot_services->handle_protocol(image_handle, &EFI_LOADED_IMAGE_PROTOCOL_GUID, (void **)&loaded_image);

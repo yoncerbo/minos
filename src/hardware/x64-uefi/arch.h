@@ -180,9 +180,10 @@ typedef struct PACKED {
 
 typedef struct {
   Sink sink;
-  uint32_t x, y;
-  uint32_t font_width, font_height;
+  Font font;
   Surface surface;
+  uint32_t x, y;
+  uint32_t line_spacing;
 } FbSink;
 
 FbSink FB_SINK;
