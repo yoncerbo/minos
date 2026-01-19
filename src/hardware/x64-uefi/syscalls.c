@@ -37,9 +37,7 @@ SYSV size_t handle_syscall(SyscallFrame *frame) {
         frame->rax = SYS_ERR_BAD_ARG;
         return 0;
       }
-      for (size_t i = 0; i < limit && str[i]; ++i) {
-        putchar(str[i]);
-      }
+      log("%S", limit, str);
     } break;
     case SYS_EXIT: {
       frame->rax = frame->rdi;

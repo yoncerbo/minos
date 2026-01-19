@@ -173,4 +173,19 @@ typedef struct PACKED {
   uint32_t creator_revision;
 } SdtHeader;
 
+#define WRITE_PORT(port, value) ASM("out %0, %1" :: "i"(port), "a" (value));
+
+#define WRITE_MSR(msr, low32, high32) ASM("wrmsr" :: "c"(msr), "a"(low32), "d"(high32))
+#define READ_MSR(msr, low32, high32) ASM("rdmsr" : "=a"(low32), "=d"(high32) : "c"(msr))
+
+typedef struct {
+  Sink sink;
+  uint32_t x, y;
+  uint32_t font_width, font_height;
+  Surface surface;
+} FbSink;
+
+FbSink FB_SINK;
+Sink QEMU_DEBUGCON_SINK;
+
 #endif

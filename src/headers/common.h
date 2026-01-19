@@ -61,7 +61,7 @@ typedef struct {
 #define STRINGIFY_INNER(x) #x
 #define STRINGIFY(x) STRINGIFY_INNER(x) 
 #define CSTR_LEN(str) (sizeof(str) - 1)
-#define STR(str) ((Str){ (str), CSTR_LEN(str) })
+#define STR(str) ((Str){ CSTR_LEN(str), (str) })
 
 #define SIZEOF_IN_PAGES(type) (sizeof(type) + PAGE_SIZE - 1) / PAGE_SIZE
 
@@ -76,34 +76,47 @@ bool are_strings_equal(const char *s1, const char *s2, size_t limit);
 uint32_t __bswapsi2(uint32_t u);
 
 #define DEBUGD(var) \
-  printf(STRINGIFY(var) "=%d\n", var)
+  log(STRINGIFY(var) "=%d", var)
 #define DEBUGS(var) \
-  printf(STRINGIFY(var) "='%s'\n", var)
+  log(STRINGIFY(var) "='%s'", var)
 #define DEBUGX(var) \
-  printf(STRINGIFY(var) "=0x%x\n", var)
-
-// TODO: Add better logging functionality
-#define LOG(fmt, ...) \
-  printf("[LOG] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, __VA_ARGS__)
-
-#define ERROR(fmt, ...) \
-  printf("[ERROR] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, __VA_ARGS__)
-
-#define PANIC(fmt, ...) do { \
-  printf("[PANIC] %s " __FILE__ ":" STRINGIFY(__LINE__) " " fmt, __func__, __VA_ARGS__); \
-  for (;;) __asm__ __volatile__("wfi"); \
-} while (0)
-
+  log(STRINGIFY(var) "=0x%x", var)
 
 #define ASSERT(expr) do { \
   if (!(expr)) { \
-    printf("[ASSERT] %s " __FILE__ ":" STRINGIFY(__LINE__) ": " STRINGIFY(expr) "\n", __func__); \
+    log("[ASSERT] %s " __FILE__ ":" STRINGIFY(__LINE__) ": " STRINGIFY(expr) "\n", __func__); \
     for (;;) WFI(); \
   } \
 } while (0)
 
-void (SYSV *putchar)(char ch);
-void printf(const char *fmt, ...);
+typedef enum {
+  OK = 0,
+  ERR_NOT_ENOUGH_SPACE,
+} Error;
+
+typedef struct Sink {
+  Error (SYSV *write)(void *this, const void *buffer, uint32_t limit);
+} Sink;
+
+typedef struct {
+  uint8_t *ptr;
+  uint32_t capacity;
+  uint32_t position;
+  Sink *sink;
+} BufferedSink;
+
+Error write(Sink *sink, const void *buffer, uint32_t limit);
+Error write_str(Sink *sink, Str str);
+
+void vprints(BufferedSink *buffer, const char *format, va_list vargs);
+void prints(Sink *sink, const char *format, ...);
+
+uint8_t LOG_BUFFER_INNER[64];
+BufferedSink LOG_BUFFER = {
+  .ptr = LOG_BUFFER_INNER,
+  .capacity = 64,
+};
+void log(const char *format, ...);
 
 // src/drawing.c
 typedef struct {

@@ -6,17 +6,16 @@
 #include "interrupts.c"
 #include "strings.c"
 #include "drawing.c"
-#include "print.c"
 #include "efi.c"
 #include "memory.c"
 #include "syscalls.c"
 #include "user.c"
+#include "print.c"
+#include "logging.c"
 
 // TODO: Better logging system, thread-safe for interrupts, multiple targets
 // TODO: Loading user program from disk
 // TODO: Running on real hardware
-
-#define ASM_OUT(port, value) ASM("out " #port ", %0" : : "a" (value));
 
 ALIGNED(16) InterruptDescriptor IDT[256] = {0};
 Tss TSS;
@@ -42,13 +41,13 @@ NORETURN void kernel_main(void) {
     // NOTE: We only handle one code section for now
     ASSERT(desc->type != EFI_LOADER_DATA);
     if (desc->type == EFI_LOADER_DATA) {
-      printf("Kernel data: addr=0x%X, count=%d\n", desc->physical_start, desc->number_of_pages);
+      log("Kernel data: addr=0x%X, count=%d", desc->physical_start, desc->number_of_pages);
     } else if (desc->type == EFI_LOADER_CODE) {
-      printf("Kernel code: addr=0x%X, count=%d\n", desc->physical_start, desc->number_of_pages);
+      log("Kernel code: addr=0x%X, count=%d", desc->physical_start, desc->number_of_pages);
       ASSERT(kernel_code == NULL);
       kernel_code = desc;
     } else if (desc->type == EFI_CONVENTIONAL_MEMORY) {
-      printf("Memory: addr=0x%X, count=%d\n", desc->physical_start, desc->number_of_pages);
+      log("Memory: addr=0x%X, count=%d", desc->physical_start, desc->number_of_pages);
       if (desc->number_of_pages <= allocator.page_count) continue;
       allocator.page_count = desc->number_of_pages;
       allocator.start = desc->physical_start;
@@ -58,10 +57,10 @@ NORETURN void kernel_main(void) {
   ASSERT(allocator.page_count);
   ASSERT(allocator.start % PAGE_SIZE == 0);
 
-  printf("Memory info: count=%d, addr=0x%x\n", allocator.page_count, allocator.start);
+  log("Memory info: count=%d, addr=0x%x", allocator.page_count, allocator.start);
 
   ASM("cli");
-  LOG("Interrupts disabled\n", 0);
+  log("Interrupts disabled");
 
   TSS.ist1 = (size_t)&INTERRUPT_STACK[sizeof(INTERRUPT_STACK) - 1];
   uint64_t tss_base = (uint64_t)&TSS;
@@ -73,10 +72,10 @@ NORETURN void kernel_main(void) {
   GdtPtr gdt_table_ptr = { sizeof(GDT_TABLE) - 1, (uint64_t)&GDT_TABLE };
   load_gdt_table(&gdt_table_ptr);
 
-  LOG("Setup GDT and TSS\n", 0);
+  log("Setup GDT and TSS");
 
   setup_idt(IDT);
-  LOG("Setup IDT\n", 0);
+  log("Setup IDT");
 
   PageTable *pml4 = (void *)alloc_pages(&allocator, 1);
   memset(pml4, 0, PAGE_SIZE);
@@ -92,14 +91,14 @@ NORETURN void kernel_main(void) {
   KernelThreadContext thread_context = {0};
   enable_system_calls(&thread_context);
 
-  printf("Running user program\n");
+  log("Running user program");
   size_t status;
   status = run_user_program(user_main, (void *)&USER_STACK[sizeof(USER_STACK) - 1]);
   DEBUGD(status);
   status = run_user_program(user_main, (void *)&USER_STACK[sizeof(USER_STACK) - 1]);
   DEBUGD(status);
 
-  printf("Back in kernel\n");
+  log("Back in kernel");
 
   for (;;) WFI();
 }

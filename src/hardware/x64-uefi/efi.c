@@ -9,32 +9,6 @@ void assert_ok(size_t status, EfiSimpleTextOutputProtocol *out, const wchar_t *e
   }
 }
 
-SYSV void putchar_surface(char ch) {
-  const uint32_t MARGIN = 16;
-  const uint32_t HEIGHT = 16;
-  const uint32_t WIDTH = 8;
-
-  static uint32_t x = MARGIN; 
-  static uint32_t y = MARGIN;
-
-  if (x >= BOOT_CONFIG.fb.width) {
-    x = MARGIN;
-    y += HEIGHT;
-  }
-
-  if (y >= BOOT_CONFIG.fb.height) {
-    return;
-  }
-
-  if (ch == '\n') {
-    x = MARGIN;
-    y += HEIGHT;
-  } else {
-    draw_char(&BOOT_CONFIG.fb, x, y, WHITE, ch);
-    x += WIDTH;
-  }
-}
-
 CASSERT(sizeof(EfiGuid) == sizeof(uint64_t[2]));
 bool are_efi_guid_equal(const EfiGuid *a, const EfiGuid *b) {
   uint64_t *arr_a = (void *)a;
@@ -66,15 +40,32 @@ size_t read_efi_file(EfiFileHandle *file, void *buffer, size_t limit) {
   return limit;
 }
 
-EfiSimpleTextOutputProtocol *efiout;
+typedef struct {
+  Sink sink;
+  EfiSimpleTextOutputProtocol *out;
+} EfiSink;
 
-SYSV void putchar_efi(char ch) {
-  if (ch == '\n') {
-    efiout->output_string(efiout, L"\n\r");
-  } else {
-    efiout->output_string(efiout, (wchar_t[]){ch, 0});
+SYSV Error efi_sink_write(void *data, const void *buffer, uint32_t limit) {
+  const uint8_t *bytes = buffer;
+  EfiSink *this = (void *)data;
+  for (uint32_t i = 0; i < limit; ++i) {
+    char ch = bytes[i];
+    if (ch == '\n') {
+      this->out->output_string(this->out, L"\n\r");
+    } else {
+      this->out->output_string(this->out, (wchar_t[]){ch, 0});
+    }
   }
+  return OK;
 }
+
+uint8_t EFI_STREAM_BUFFER[64];
+
+EfiSink EFI_SINK = {
+  .sink.write = efi_sink_write,
+};
+
+EfiSimpleTextOutputProtocol *efiout;
 
 uint8_t compute_acpi_checksum(void *start, size_t length) {
   uint8_t *bytes = start;
@@ -88,8 +79,8 @@ uint8_t MEMORY_MAP[1024 * 32];
 ALIGNED(16) uint8_t KERNEL_STACK[8 * 1024];
 
 EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
-  efiout = st->con_out;
-  putchar = putchar_efi;
+  EFI_SINK.out = st->con_out;
+  LOG_BUFFER.sink = &EFI_SINK.sink;
 
   size_t status = 0;
 
@@ -118,7 +109,9 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
     .pitch = info->pixel_per_scan_line * 4,
   };
   fill_surface(&BOOT_CONFIG.fb, 0xff111111);
-  putchar = putchar_surface;
+  FB_SINK.surface = BOOT_CONFIG.fb;
+  // LOG_BUFFER.sink = &FB_SINK.sink;
+  LOG_BUFFER.sink = &FB_SINK.sink;
 
   EfiLoadedImageProtocol *loaded_image;
   status = st->boot_services->handle_protocol(image_handle, &EFI_LOADED_IMAGE_PROTOCOL_GUID, (void **)&loaded_image);
@@ -153,7 +146,7 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
       ASSERT(compute_acpi_checksum(rsdp, sizeof(*rsdp)) == 0);
       ASSERT(rsdp->revision == 0);
 
-      SdtHeader *rsdt = (void *)rsdp->rsdt_address;
+      SdtHeader *rsdt = (void *)(size_t)rsdp->rsdt_address;
       // TODO: It can also be XSDT table instead, handle that case
       ASSERT(are_strings_equal(rsdt->signature, "RSDT", 4));
       ASSERT(compute_acpi_checksum(rsdt, rsdt->length) == 0);
@@ -163,8 +156,8 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
       uint32_t entry_count = (rsdt->length - sizeof(*rsdt)) / 4;
 
       for (uint32_t i = 0; i < entry_count; ++i) {
-        SdtHeader *header = (void *)entries[i];
-        printf("sdt entry: %S\n", 4, header->signature);
+        SdtHeader *header = (void *)(size_t)entries[i];
+        log("sdt entry: %S", 4, header->signature);
       }
     }
   }

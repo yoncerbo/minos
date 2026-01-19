@@ -12,6 +12,7 @@
 
 // TODO: setup proper memory handling and allocators
 // TODO: task system, processes
+// TODO: Basic automated testing with qemu
 
 void uart_putchar(char ch) {
   *UART = ch;

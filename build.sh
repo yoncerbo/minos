@@ -37,7 +37,7 @@ build() {
         -o $OUT/kernel.elf $DIR/main.c $DIR/boot.s
       ;;
     "x64-uefi")
-      clang $CFLAGS $CLANG_UEFI_FLAGS -o $OUT/BOOTX64.EFI $DIR/main.c $DIR/utils.s -DARCH_X64
+      clang -I $DIR $CFLAGS $CLANG_UEFI_FLAGS -o $OUT/BOOTX64.EFI $DIR/main.c $DIR/utils.s -DARCH_X64
       mcopy -i fat.img $OUT/BOOTX64.EFI ::/EFI/BOOT -D o
       ;;
     *)
@@ -57,7 +57,6 @@ X64_QEMU_FLAGS="
   --enable-kvm
 "
 # -d int -M smm=off \
-# -debugcon mon:stdio \
 
 debug() {
   build
@@ -96,10 +95,8 @@ run() {
       ;;
     "x64-uefi")
       qemu-system-x86_64 $X64_QEMU_FLAGS \
-        -serial mon:stdio \
-        # -debugcon mon:stdio \
-        # --enable-kvm \
-        # -d int -M smm=off \
+        -debugcon mon:stdio \
+        -d int \
       ;;
     *)
       echo "Unknown taret '$TARGET'"
