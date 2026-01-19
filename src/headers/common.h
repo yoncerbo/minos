@@ -36,8 +36,8 @@ typedef size_t vaddr_t;
 typedef _Bool bool;
 
 typedef struct {
-  const char *ptr;
   uint32_t len;
+  const char *ptr;
 } Str;
 
 #define NULL 0
@@ -72,7 +72,7 @@ typedef struct {
 
 void *memcpy(void *restrict dest, const void *restrict src, size_t n);
 void *memset(void *s, int c, size_t n);
-int strncmp(const char *s1, const char *s2, size_t n);
+bool are_strings_equal(const char *s1, const char *s2, size_t limit);
 uint32_t __bswapsi2(uint32_t u);
 
 #define DEBUGD(var) \

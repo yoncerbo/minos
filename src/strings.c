@@ -13,10 +13,9 @@ void *memset(void *s, int c, size_t n) {
   return s;
 }
 
-int strncmp(const char *s1, const char *s2, size_t n) {
-  size_t i = 0;
-  for (; i < n && s1[i] == s2[i]; ++i);
-  return (uint8_t)s1[i] - (uint8_t)s2[i];
+bool are_strings_equal(const char *s1, const char *s2, size_t limit) {
+  for (size_t i = 0; i < limit; ++i) if (s1[i] != s2[i]) return false;
+  return true;
 }
 
 inline uint32_t __bswapsi2(uint32_t u) {

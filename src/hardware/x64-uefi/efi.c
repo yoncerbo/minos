@@ -35,6 +35,13 @@ SYSV void putchar_surface(char ch) {
   }
 }
 
+CASSERT(sizeof(EfiGuid) == sizeof(uint64_t[2]));
+bool are_efi_guid_equal(const EfiGuid *a, const EfiGuid *b) {
+  uint64_t *arr_a = (void *)a;
+  uint64_t *arr_b = (void *)b;
+  return arr_a[0] == arr_b[0] && arr_a[1] == arr_b[1];
+}
+
 EfiFileHandle *open_efi_file(EfiFileHandle *parent, const wchar_t *filename, uint64_t file_mode, uint64_t attributes) {
   EfiFileHandle *file;
   size_t status = parent->open(parent, &file, filename, file_mode, attributes);
@@ -69,6 +76,13 @@ SYSV void putchar_efi(char ch) {
   }
 }
 
+uint8_t compute_acpi_checksum(void *start, size_t length) {
+  uint8_t *bytes = start;
+  uint8_t sum = 0;
+  for (size_t i = 0; i < length; ++i) sum += bytes[i];
+  return sum;
+}
+
 // TODO: Allocate a buffer instead
 uint8_t MEMORY_MAP[1024 * 32];
 ALIGNED(16) uint8_t KERNEL_STACK[8 * 1024];
@@ -95,13 +109,6 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
 
   // TODO: Iterate through the modes and get their info
   // TODO: Use double buffering, don't read the video memory directly
-
-  uint32_t color = 0xff111111;
-  for (uint32_t y = 0; y < info->height; ++y) {
-    for (uint32_t x = 0; x < info->width; ++x) {
-      ((uint32_t *)gop->mode->frame_buffer_base)[y * gop->mode->info->pixel_per_scan_line + x] = color;
-    }
-  }
 
   // TODO: Handle different formats
   BOOT_CONFIG.fb = (Surface){
@@ -134,7 +141,34 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
   status = file_system->volume_open(file_system, &root);
   assert_ok(status, st->con_out, L"Failed to open root file");
 
-  // TODO: Functions to convert between asci and utf-16?
+  for (size_t i = 0; i < st->number_of_table_entries; ++i) {
+    EfiConfigTable *entry = &st->configuration_table[i];
+    if (are_efi_guid_equal(&entry->vendor_guid, &EFI_ACPI2_TABLE_GUID)) {
+
+    } else if (are_efi_guid_equal(&entry->vendor_guid, &EFI_ACPI_TABLE_GUID)) {
+      // SOURCE: https://uefi.org/specs/ACPI/6.6/05_ACPI_Software_Programming_Model.html#rsdp-structure
+
+      Rsdp *rsdp = entry->vendor_table;
+      ASSERT(are_strings_equal(rsdp->signature, "RSD PTR ", 8));
+      ASSERT(compute_acpi_checksum(rsdp, sizeof(*rsdp)) == 0);
+      ASSERT(rsdp->revision == 0);
+
+      SdtHeader *rsdt = (void *)rsdp->rsdt_address;
+      // TODO: It can also be XSDT table instead, handle that case
+      ASSERT(are_strings_equal(rsdt->signature, "RSDT", 4));
+      ASSERT(compute_acpi_checksum(rsdt, rsdt->length) == 0);
+      ASSERT(rsdt->revision == 1);
+
+      uint32_t *entries = (void *)((uint8_t *)rsdt + sizeof(*rsdt));
+      uint32_t entry_count = (rsdt->length - sizeof(*rsdt)) / 4;
+
+      for (uint32_t i = 0; i < entry_count; ++i) {
+        SdtHeader *header = (void *)entries[i];
+        printf("sdt entry: %S\n", 4, header->signature);
+      }
+    }
+  }
+
   // TODO: Setup uart for logging and use it instead of the console
   // TODO: Make our own console?
 

@@ -24,6 +24,11 @@ void printf(const char *fmt, ...) {
         const char *s = va_arg(vargs, const char *);
         while (*s) putchar(*s++);
       } break;
+      case 'S': {
+        size_t limit = va_arg(vargs, size_t);
+        const char *s = va_arg(vargs, const char *);
+        for (size_t i = 0; i < limit && *s; ++i, ++s) putchar(*s);
+      } break;
       case 'x': {
         uint32_t v = va_arg(vargs, uint32_t);
         for (int i = 7; i >= 0; i--) {
