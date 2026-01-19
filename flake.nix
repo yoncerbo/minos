@@ -27,6 +27,7 @@
           qemu
           mtools
           llvmPackages.bintools
+          nasm
         ];
         GNU_EFI = "${pkgs.gnu-efi}";
         # shellHook = "export CC=clang";

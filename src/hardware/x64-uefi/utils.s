@@ -5,7 +5,14 @@
 .global PSF_FONT_START
 PSF_FONT_START:
 # .incbin "res/font.psf"
-.incbin "res/font1.psf"
+  .incbin "res/font1.psf"
+
+.global USER_BINARY
+USER_BINARY:
+  .incbin "out/user/example.bin"
+.global USER_BINARY_SIZE
+.equ USER_BINARY_SIZE, (. - USER_BINARY)
+int3 # A safeguard
 
 .section .text
 

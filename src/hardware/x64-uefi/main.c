@@ -21,6 +21,9 @@
 ALIGNED(16) InterruptDescriptor IDT[256] = {0};
 Tss TSS;
 
+extern char USER_BINARY[];
+extern size_t USER_BINARY_SIZE;
+
 // TODO: Setup additional pages for protecting the stack
 ALIGNED(16) uint8_t USER_STACK[8 * 1024];
 ALIGNED(16) uint8_t INTERRUPT_STACK[8 * 1024];
@@ -94,15 +97,10 @@ NORETURN void kernel_main(void) {
 
   log("Running user program");
   size_t status;
-  status = run_user_program(user_main, (void *)&USER_STACK[sizeof(USER_STACK) - 1]);
-  DEBUGD(status);
-  status = run_user_program(user_main, (void *)&USER_STACK[sizeof(USER_STACK) - 1]);
+  status = run_user_program((void *)USER_BINARY, (void *)&USER_STACK[sizeof(USER_STACK) - 1]);
   DEBUGD(status);
 
   log("Back in kernel");
 
-  prints(&QEMU_DEBUGCON_SINK, "Hello, World Qemu\n");
-
   for (;;) WFI();
 }
-

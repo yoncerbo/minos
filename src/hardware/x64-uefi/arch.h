@@ -120,7 +120,7 @@ void map_range_identity(PageAllocator *alloc, PageTable *level4_table,
 
 SYSV extern void load_gdt_table(GdtPtr *gdt_table_ptr);
 SYSV extern void enable_system_calls(void *kernel_gs_base);
-SYSV extern size_t run_user_program(void (*user_main)(void), void *stack_top);
+SYSV extern size_t run_user_program(void *function, void *stack_top);
 SYSV extern void putchar_qemu_debugcon(char ch);
 
 ALIGNED(PAGE_SIZE) PageTable PML4;

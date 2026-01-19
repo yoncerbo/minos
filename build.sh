@@ -37,6 +37,7 @@ build() {
         -o $OUT/kernel.elf $DIR/main.c $DIR/boot.s
       ;;
     "x64-uefi")
+      nasm -fbin src/user/example.s -o out/user/example.bin
       clang -I $DIR $CFLAGS $CLANG_UEFI_FLAGS -o $OUT/BOOTX64.EFI $DIR/main.c $DIR/utils.s -DARCH_X64
       mcopy -i fat.img $OUT/BOOTX64.EFI ::/EFI/BOOT -D o
       ;;
@@ -131,5 +132,10 @@ make-fat-image() {
   mmd -i fat.img ::/EFI
   mmd -i fat.img ::/EFI/BOOT
 }
+
+# Useful commands:
+#
+# Disassemble flat binary file:
+#   x86_64-elf-objdump -b binary -m i386:x86-64 -D out/user/example.bin
 
 "$@"

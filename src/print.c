@@ -123,7 +123,7 @@ void flush_buffer(Buffer *buffer, Sink *sink) {
 
 void prints(Sink *sink, const char *format, ...) {
   uint8_t stack_buffer[32];
-  Buffer buffer = { stack_buffer, 32 };
+  Buffer buffer = { stack_buffer, 32, 0};
   va_list vargs;
   va_start(vargs, format);
   vprintb(&buffer, sink, format, vargs);
