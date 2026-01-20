@@ -12,7 +12,6 @@
 #include "syscalls.c"
 #include "user.c"
 #include "logging.c"
-#include "print.c"
 
 // TODO: Better logging system, thread-safe for interrupts, multiple targets
 // TODO: Loading user program from disk

@@ -1,9 +1,10 @@
+#include "cmn/lib.h"
 #include "lib.h"
 
 int global = 432;
 
 int main(void) {
-  sys_log("hello", 5);
+  log("hello world %d", 123);
 
   return global;
 }

@@ -6,33 +6,6 @@
 typedef size_t paddr_t;
 typedef size_t vaddr_t;
 
-typedef enum {
-  OK = 0,
-  ERR_OUT_OF_SPACE,
-} Error;
-
-typedef struct Sink {
-  Error (SYSV *write)(void *this, const void *buffer, uint32_t limit);
-} Sink;
-
-typedef struct {
-  uint8_t *ptr;
-  uint32_t capacity;
-  uint32_t position;
-} Buffer;
-
-Error write(Sink *sink, const void *buffer, uint32_t limit);
-Error write_str(Sink *sink, Str str);
-Error writeb(Buffer *buffer, Sink *sink, const void *content, uint32_t limit);
-Error write_strb(Buffer *buffer, Sink *sink, Str str);
-void putcharb(Buffer *buffer, Sink *sink, char ch);
-void vprintb(Buffer *buffer, Sink *sink, const char *format, va_list vargs);
-void flush_buffer(Buffer *buffer, Sink *sink);
-void prints(Sink *sink, const char *format, ...);
-void log(const char *format, ...);
-
-Sink *LOG_SINK = NULL;
-
 extern char PSF_FONT_START[];
 
 const uint16_t PSF1_MAGIC = 0x0436;

@@ -15,7 +15,7 @@ typedef struct PACKED {
 } SyscallFrame;
 
 SyscallError sys_log(const char *str, size_t limit) {
-  size_t result = SYS_LOG;
+  size_t result = SYS_WRITE;
   ASM("syscall" : "+a"(result) : "D"(str), "S"(limit));
   return result;
 }
@@ -31,7 +31,7 @@ SYSV size_t handle_syscall(SyscallFrame *frame) {
 
   // TODO: Getting kernel thread context
   switch (frame->rax) {
-    case SYS_LOG: {
+    case SYS_WRITE: {
       const char *str = (void *)frame->rdi;
       size_t limit = frame->rsi;
       // TODO: Proper argument checking
@@ -39,7 +39,7 @@ SYSV size_t handle_syscall(SyscallFrame *frame) {
         frame->rax = SYS_ERR_BAD_ARG;
         return 0;
       }
-      log("%S", limit, str);
+      prints(LOG_SINK, "%S", limit, str);
     } break;
     case SYS_EXIT: {
       frame->rax = frame->rdi;
