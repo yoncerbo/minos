@@ -20,7 +20,8 @@ int3 # A safeguard
 
 .equ GDT_KERNEL_CODE, 1
 .equ GDT_KERNEL_DATA, 2
-.equ GDT_TSS_LOW, 5
+.equ GDT_USER_NULL, 3
+.equ GDT_TSS_LOW, 6
 
 # SOURCE: https://sandpile.org/x86/msr.htm
 
@@ -126,9 +127,9 @@ enable_system_calls:
 
   mov ecx, MSR_STAR
   # CS - Code Selector, SS - Stack Selector
-  # User CS, User SS, Kernel CS, Kernel SS, 32 bits offset
-  # 4, 5, 1, 2
-  mov edx, 0x00130008
+  # 3, 4, 1, 2
+  rdmsr // keep the lower 32 bits in eax
+  mov edx, 0x001B0008
   wrmsr
 
   mov ecx, MSR_LSTAR

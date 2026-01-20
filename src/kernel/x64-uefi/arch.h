@@ -1,6 +1,7 @@
 #ifndef INCLUDE_X64_ARCH
 #define INCLUDE_X64_ARCH
 
+#include "cmn/lib.h"
 #include "common.h"
 #include "efi.h"
 
@@ -31,12 +32,14 @@ typedef struct PACKED {
 
 typedef enum {
   GDT_KERNEL_NULL = 0,
-  GDT_KERNEL_CODE = 1,
-  GDT_KERNEL_DATA = 2,
-  GDT_USER_CODE = 3,
-  GDT_USER_DATA = 4,
-  GDT_TSS_LOW = 5,
-  GDT_TSS_HIGH = 6,
+  GDT_KERNEL_CODE = 1, // 0x08
+  GDT_KERNEL_DATA = 2, // 0x10
+  // NOTE: "SYSRET sets the CS selector value to MSR IA32_STAR[63:48] +16. The SS is set to IA32_STAR[63:48] + 8."
+  GDT_USER_NULL = 3, // 0x18
+  GDT_USER_DATA = 4, // +8 - for ss
+  GDT_USER_CODE = 5, // +16 - for cs
+  GDT_TSS_LOW = 6,
+  GDT_TSS_HIGH = 7,
   GDT_COUNT,
 } GdtEntryIndex;
 
@@ -112,7 +115,6 @@ typedef struct {
   PageTable *pml4;
 } PageAllocator;
 
-paddr_t reserve_pages(PageAllocator *allocator, size_t page_count);
 paddr_t alloc_pages(PageAllocator *allocator, size_t page_count);
 void map_page_identity(PageAllocator *alloc, PageTable *level4_table, size_t addr, size_t flags);
 void map_range_identity(PageAllocator *alloc, PageTable *level4_table,
@@ -174,5 +176,22 @@ typedef struct {
 
 FbSink FB_SINK;
 Sink QEMU_DEBUGCON_SINK;
+
+#define GS_RELATIVE __attribute__((address_space(256)))
+GS_RELATIVE const KernelThreadContext *CONTEXT = 0;
+
+typedef struct {
+  size_t start;
+  size_t page_count;
+} PhysicalPageRange;
+
+typedef struct {
+  PhysicalPageRange *ranges;
+  uint32_t capacity;
+  uint32_t len;
+} PageAllocator2;
+
+void push_free_pages(PageAllocator2 *alloc, size_t physical_start, size_t page_count);
+paddr_t alloc_pages2(PageAllocator2 *alloc, size_t page_count);
 
 #endif

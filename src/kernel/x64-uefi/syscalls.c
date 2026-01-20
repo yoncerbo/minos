@@ -1,3 +1,4 @@
+#include "cmn/lib.h"
 #include "common.h"
 #include "arch.h"
 
@@ -27,6 +28,7 @@ NORETURN void sys_exit(size_t error_code) {
 
 SYSV size_t handle_syscall(SyscallFrame *frame) {
   ASSERT(frame);
+
   // TODO: Getting kernel thread context
   switch (frame->rax) {
     case SYS_LOG: {

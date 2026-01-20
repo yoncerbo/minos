@@ -1,3 +1,4 @@
+#include "cmn/lib.h"
 #include "common.h"
 #include "arch.h"
 #include "efi.h"
@@ -16,6 +17,10 @@
 // TODO: Better logging system, thread-safe for interrupts, multiple targets
 // TODO: Loading user program from disk
 // TODO: Running on real hardware
+// TODO: Arena allocator for the kernel
+
+#define MAX_PHYSICAL_RANGES 256
+PhysicalPageRange PAGE_RANGES[MAX_PHYSICAL_RANGES];
 
 ALIGNED(16) InterruptDescriptor IDT[256] = {0};
 Tss TSS;
@@ -37,25 +42,41 @@ NORETURN void kernel_main(void) {
   PageAllocator allocator = {0};
   EfiMemoryDescriptor *kernel_code = 0;
 
+  PageAllocator2 alloc2 = {
+    .capacity = MAX_PHYSICAL_RANGES,
+    .ranges = PAGE_RANGES,
+  };
+  GLOBAL_PAGE_ALLOCATOR = &alloc2;
+
   for (size_t offset = 0;
       offset < BOOT_CONFIG.memory_map_size;
       offset += BOOT_CONFIG.memory_descriptor_size) {
     EfiMemoryDescriptor *desc = (void *)(MEMORY_MAP + offset);
     // NOTE: We only handle one code section for now
     ASSERT(desc->type != EFI_LOADER_DATA);
-    if (desc->type == EFI_LOADER_DATA) {
-      log("Kernel data: addr=0x%X, count=%d", desc->physical_start, desc->number_of_pages);
-    } else if (desc->type == EFI_LOADER_CODE) {
-      log("Kernel code: addr=0x%X, count=%d", desc->physical_start, desc->number_of_pages);
-      ASSERT(kernel_code == NULL);
+    if (desc->type == EFI_LOADER_CODE) {
       kernel_code = desc;
     } else if (desc->type == EFI_CONVENTIONAL_MEMORY) {
-      log("Memory: addr=0x%X, count=%d", desc->physical_start, desc->number_of_pages);
       if (desc->number_of_pages <= allocator.page_count) continue;
       allocator.page_count = desc->number_of_pages;
       allocator.start = desc->physical_start;
     }
+    if (desc->type == EFI_CONVENTIONAL_MEMORY ) {
+        // NOTE: We can't write to those areas before we set up our page tables
+        // desc->type == EFI_BOOT_SERVICES_CODE || desc->type == EFI_BOOT_SERVICES_DATA) {
+      push_free_pages(&alloc2, desc->physical_start, desc->number_of_pages);
+    }
   }
+
+  paddr_t biggest_memory_addr = 0;
+  size_t pages_total = 0;
+  for (size_t i = 0; i < alloc2.len; ++i) {
+    log("Memory %d addr=%X, pages=%d", i, alloc2.ranges[i].start, alloc2.ranges[i].page_count);
+    pages_total += alloc2.ranges[i].page_count;
+    paddr_t end = alloc2.ranges[i].start + alloc2.ranges[i].page_count * PAGE_SIZE;
+    if (end > biggest_memory_addr) biggest_memory_addr = end;
+  }
+  DEBUGD(pages_total);
 
   ASSERT(allocator.page_count);
   ASSERT(allocator.start % PAGE_SIZE == 0);
@@ -83,11 +104,20 @@ NORETURN void kernel_main(void) {
   PageTable *pml4 = (void *)alloc_pages(&allocator, 1);
   memset(pml4, 0, PAGE_SIZE);
   size_t memory_size = 1024 * 1024 * 1024;
-  size_t page_flags = PAGE_BIT_WRITABLE | PAGE_BIT_USER;
+  size_t page_flags = PAGE_BIT_WRITABLE | PAGE_BIT_USER | PAGE_BIT_PRESENT;
 
-  map_range_identity(&allocator, pml4, kernel_code->physical_start, kernel_code->number_of_pages * PAGE_SIZE, page_flags);
-  map_range_identity(&allocator, pml4, (size_t)BOOT_CONFIG.fb.ptr,
-      BOOT_CONFIG.fb.height * BOOT_CONFIG.fb.pitch, page_flags);
+  // map_range_identity(&allocator, pml4, kernel_code->physical_start, kernel_code->number_of_pages * PAGE_SIZE, page_flags);
+  // map_range_identity(&allocator, pml4, (size_t)BOOT_CONFIG.fb.ptr,
+  //     BOOT_CONFIG.fb.height * BOOT_CONFIG.fb.pitch, page_flags);
+
+  map_pages(&alloc2, pml4, kernel_code->physical_start, kernel_code->physical_start,
+      kernel_code->number_of_pages * PAGE_SIZE, page_flags);
+
+  size_t virtual_offset = 0xFFFF800000000000;
+  map_pages(&alloc2, pml4, 0, virtual_offset, PAGE_SIZE, page_flags);
+
+  map_pages(&alloc2, pml4, (size_t)BOOT_CONFIG.fb.ptr, (size_t)BOOT_CONFIG.fb.ptr,
+      BOOT_CONFIG.fb.height * BOOT_CONFIG.fb.pitch, PAGE_BIT_WRITABLE | PAGE_BIT_PRESENT);
 
   ASM( "mov cr3, %0" :: "r"((size_t)pml4 & PAGE_ADDR_MASK));
 
@@ -99,7 +129,7 @@ NORETURN void kernel_main(void) {
   status = run_user_program((void *)USER_BINARY, (void *)&USER_STACK[sizeof(USER_STACK) - 1]);
   DEBUGD(status);
 
-  log("Back in kernel");
+  log("OK");
 
   for (;;) WFI();
 }

@@ -41,11 +41,12 @@ void double_fault_handler(InterruptFrame *frame, size_t error_code) {
 
 __attribute__((interrupt))
 void general_protection_handler(InterruptFrame *frame, size_t error_code) {
-  log("General protection fault: error_code=%d\n", error_code);
+  log("General protection fault: error_code=%d", error_code);
   log("  instruction_pointer=0x%x", frame->ip);
   log("  stack_pointer=0x%x", frame->sp);
   log("  flags=0x%x", frame->flags);
   log("  cs=0x%x, ss=0x%x", frame->cs, frame->ss);
+  DEBUGD(frame->cs);
   for (;;) WFI();
 }
 

@@ -1,3 +1,4 @@
+#include "cmn/lib.h"
 #include "common.h"
 #include "arch.h"
 

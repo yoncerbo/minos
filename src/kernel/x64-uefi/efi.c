@@ -160,7 +160,7 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
 
       for (uint32_t i = 0; i < entry_count; ++i) {
         SdtHeader *header = (void *)(size_t)entries[i];
-        log("sdt entry: %S", 4, header->signature);
+        // log("sdt entry: %S", 4, header->signature);
       }
     }
   }
