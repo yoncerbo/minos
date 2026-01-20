@@ -7,14 +7,9 @@ PSF_FONT_START:
 # .incbin "res/font.psf"
   .incbin "res/font1.psf"
 
-.align 4096
-.global USER_BINARY
-USER_BINARY:
-  .incbin "out/x64-uefi/user_main.bin"
-.align 4096
-.global USER_BINARY_END
-USER_BINARY_END:
-int3 # A safeguard
+.global ELF_FILE
+ELF_FILE:
+  .incbin "out/x64-uefi/user_main.elf"
 
 .section .text
 

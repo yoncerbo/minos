@@ -44,6 +44,7 @@ build() {
       ;;
     "x64-uefi")
       $CC $CFLAGS $USER_FLAGS $USR/main.c -o $OUT/user_main.bin -DARCH_X64
+      # $CC $CFLAGS $USR/main.c -o $OUT/user_main.elf -DARCH_X64
       # nasm -fbin src/user/example.s -o out/user/example.bin
       clang -I $DIR $CFLAGS $CLANG_UEFI_FLAGS \
         -o $OUT/BOOTX64.EFI $DIR/main.c $DIR/utils.s -DARCH_X64 \
