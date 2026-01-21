@@ -295,6 +295,18 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
   BOOT_CONFIG.memory_descriptor_size = memory_descriptor_size;
 
   ASM("cli");
+  log("Interrupts disabled");
+
+  paddr_t interrupt_stack = alloc_pages2(&data->alloc, 2);
+  paddr_t interrupt_stack_top = interrupt_stack + 2 * PAGE_SIZE - 1;
+
+  setup_gdt_and_tss((GdtEntry *)&data->gdt, &data->tss, (void *)interrupt_stack_top);
+
+  setup_idt((InterruptDescriptor *)&data->idt);
+  log("Setup IDT");
+
+  log("OK");
+
   ASM(
     "mov rsp, %0 \n"
     "call jump_to_kernel" ::

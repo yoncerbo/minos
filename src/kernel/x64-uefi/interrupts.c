@@ -1,3 +1,4 @@
+#include "cmn/lib.h"
 #include "common.h"
 #include "arch.h"
 
@@ -15,40 +16,6 @@ void set_idt_descriptor(InterruptDescriptor *idt, uint8_t descriptor_index, size
   };
 }
 
-// SOURCE: https://gcc.gnu.org/onlinedocs/gcc/x86-Function-Attributes.html#index-interrupt-function-attribute_002c-x86
-
-__attribute__((interrupt))
-void sysstem_call_handler(InterruptFrame *frame){
-  log("System call interrupt");
-  for (;;) WFI();
-}
-
-__attribute__((interrupt))
-void breakpoint_handler(InterruptFrame *frame){
-  log("Breakpoint interrupt");
-  for (;;) WFI();
-}
-
-__attribute__((interrupt))
-void double_fault_handler(InterruptFrame *frame, size_t error_code) {
-  log("Double fault: error_code=%d", error_code);
-  log("  instruction_pointer=0x%x", frame->ip);
-  log("  stack_pointer=0x%x", frame->sp);
-  log("  flags=0x%x", frame->flags);
-  log("  cs=0x%x, ss=0x%x", frame->cs, frame->ss);
-  for (;;) WFI();
-}
-
-__attribute__((interrupt))
-void general_protection_handler(InterruptFrame *frame, size_t error_code) {
-  log("General protection fault: error_code=%d", error_code);
-  log("  instruction_pointer=0x%x", frame->ip);
-  log("  stack_pointer=0x%x", frame->sp);
-  log("  flags=0x%x", frame->flags);
-  log("  cs=0x%x, ss=0x%x", frame->cs, frame->ss);
-  DEBUGD(frame->cs);
-  for (;;) WFI();
-}
 
 // SOURCE: AMD Volume 2: 8.4.2
 typedef enum {
@@ -59,35 +26,56 @@ typedef enum {
   PAGE_FAULT_INSTRUCTION_FETCH    = 1 << 4,
 } PageFaultError;
 
-__attribute__((interrupt))
-void page_fault_handler(InterruptFrame *frame, size_t error_code) {
-  size_t cr2;
-  ASM("mov %0, cr2" : "=r"(cr2));
+extern char ISR_VECTORS[];
 
-  log("Page fault: error_code=%d", error_code);
-  log("  address=0x%x", cr2);
+void setup_idt(InterruptDescriptor *idt) {
+  uint8_t flags = 0xEE;
+  size_t vectors = (size_t)ISR_VECTORS;
+
+  for (size_t i = 0; i < 256; ++i) {
+    set_idt_descriptor(idt, i, vectors + i * 16, flags);
+  }
+
+  IdtPtr idt_ptr = { sizeof(*idt) * 256 - 1, idt };
+  ASM("lidt %0" : : "m"(idt_ptr));
+}
+
+typedef struct {
+  size_t rax; size_t rbx; size_t rcx;
+  size_t rdx; size_t rsi; size_t rdi;
+  size_t rbp; size_t r8; size_t r9;
+  size_t r10; size_t r11; size_t r12;
+  size_t r13; size_t r14; size_t r15;
+
+  size_t vector_number, error_code;
+  size_t ip, cs, flags, sp, ss;
+} IsrFrame;
+
+typedef enum {
+  INT_BREAKPOINT = 3,
+  INT_INVALID_OPCODE = 6,
+  INT_DOUBLE_FAULT = 8,
+  INT_GENERAL_PROTECTION = 13,
+  INT_PAGE_FAULT = 14,
+  INT_SYSCALL = 0x80,
+} InterruptVector;
+
+SYSV IsrFrame *interrupt_handler(IsrFrame *frame) {
+  switch (frame->vector_number) {
+    case INT_PAGE_FAULT: {
+      size_t cr2;
+      ASM("mov %0, cr2" : "=r"(cr2));
+      log("Page fault, cr2=%X", cr2);
+    } break;
+    default: {
+      log("An interrupt occured: vector=%d", frame->vector_number);
+    } break;
+  }
+  log("  error_code=%d", frame->error_code);
   log("  instruction_pointer=0x%x", frame->ip);
   log("  stack_pointer=0x%x", frame->sp);
   log("  flags=0x%x", frame->flags);
   log("  cs=0x%x, ss=0x%x", frame->cs, frame->ss);
-  for (;;) WFI();
-}
-
-__attribute__((interrupt))
-void apic_spurious_handler(InterruptFrame *frame) {
-  log("APIC Spurious Interrupt");
-  for (;;) WFI();
-}
-
-void setup_idt(InterruptDescriptor *idt) {
-  uint8_t flags = 0xEE;
-  set_idt_descriptor(idt, 3, (size_t)breakpoint_handler, flags);
-  set_idt_descriptor(idt, 8, (size_t)double_fault_handler, flags);
-  set_idt_descriptor(idt, 13, (size_t)general_protection_handler, flags);
-  set_idt_descriptor(idt, 14, (size_t)page_fault_handler, flags);
-  set_idt_descriptor(idt, 0x80, (size_t)sysstem_call_handler, flags);
-  set_idt_descriptor(idt, 0xFF, (size_t)apic_spurious_handler, flags);
-
-  IdtPtr idt_ptr = { sizeof(*idt) * 256 - 1, idt };
-  ASM("lidt %0" : : "m"(idt_ptr));
+  for(;;) WFI();
+  UNREACHABLE();
 }
