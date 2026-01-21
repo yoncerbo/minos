@@ -11,7 +11,9 @@ SYSV Error qemu_debugcon_write(void *data, const void *buffer, uint32_t limit) {
   return OK;
 }
 
-void _start(void) {
+void _start(BootData *data) {
   qemu_debugcon_write(0, "hello\n", 6);
+  ASM("int3");
+
   for(;;) WFI();
 }

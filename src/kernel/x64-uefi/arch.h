@@ -43,9 +43,6 @@ typedef enum {
   GDT_COUNT,
 } GdtEntryIndex;
 
-// SOURCE: https://wiki.osdev.org/GDT_Tutorial
-// SOURCE: https://wiki.osdev.org/Global_Descriptor_Table
-// NOTE: In long mode base and limit are ignored, each descriptor covers the whole memory
 ALIGNED(PAGE_SIZE) GdtEntry GDT_TABLE[GDT_COUNT] = {
   [GDT_KERNEL_CODE] = GDT_ENTRY(0, 0, 0x9A, 0xA),
   [GDT_KERNEL_DATA] = GDT_ENTRY(0, 0, 0x92, 0xA),
@@ -196,6 +193,18 @@ paddr_t alloc_pages2(PageAllocator2 *alloc, size_t page_count);
 
 ALIGNED(16) InterruptDescriptor IDT[256] = {0};
 Tss TSS;
+
+void setup_gdt_and_tss(GdtEntry gdt[GDT_COUNT], Tss *tss, void *interrupt_stack_top);
+
+typedef struct {
+  GdtEntry gdt[GDT_COUNT];
+  Tss tss;
+  ALIGNED(16) InterruptDescriptor idt[256];
+  PageTable *pml4;
+  PageAllocator2 alloc;
+  Surface fb;
+  Font font;
+} BootData;
 
 
 #endif
