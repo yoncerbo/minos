@@ -225,13 +225,20 @@ typedef struct {
   uint64_t number_of_pages, attributes;
 } EfiMemoryDescriptor;
 
+typedef enum {
+  EFI_ALLOC_ANY_PAGES,
+  EFI_ALLOC_MAX_ADDRESS,
+  EFI_ALLOC_ALLOCATE_ADDRESS,
+} EfiAllocateType;
+
 typedef struct {
   EfiTableHeader header;
 
   void *raise_tpl;
   void *restore_tpl;
 
-  void *allocate_pages;
+  size_t (EFIAPI *allocate_pages)(EfiAllocateType type, EfiMemoryType memory_type,
+      size_t page_count, paddr_t *addr);
   void *free_pages;
   size_t (EFIAPI *get_memory_map)(size_t *memory_map_size, void *memory_map,
       size_t *map_key, size_t *descriptor_size, uint32_t *descriptor_version);

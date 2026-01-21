@@ -54,6 +54,8 @@ void map_page(PageAllocator2 *alloc, PageTable *pml4, paddr_t physical, vaddr_t 
     (virtual >> 12) % 512,
   };
 
+  flags |= PAGE_BIT_PRESENT;
+
   PageTable *page_table = pml4;
   for (int i = 0; i < 3; ++i) {
     uint32_t index = page_table_indices[i];

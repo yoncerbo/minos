@@ -161,7 +161,7 @@ typedef struct PACKED {
   uint32_t creator_revision;
 } SdtHeader;
 
-#define WRITE_PORT(port, value) ASM("out %0, %1" :: "i"(port), "a" (value));
+#define WRITE_PORT(port, value) ASM("out %0, %1" :: "i"(port), "a"(value));
 
 #define WRITE_MSR(msr, low32, high32) ASM("wrmsr" :: "c"(msr), "a"(low32), "d"(high32))
 #define READ_MSR(msr, low32, high32) ASM("rdmsr" : "=a"(low32), "=d"(high32) : "c"(msr))
@@ -193,5 +193,9 @@ typedef struct {
 
 void push_free_pages(PageAllocator2 *alloc, size_t physical_start, size_t page_count);
 paddr_t alloc_pages2(PageAllocator2 *alloc, size_t page_count);
+
+ALIGNED(16) InterruptDescriptor IDT[256] = {0};
+Tss TSS;
+
 
 #endif

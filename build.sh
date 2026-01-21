@@ -43,13 +43,19 @@ build() {
         -o $OUT/kernel.elf $DIR/main.c $DIR/boot.s
       ;;
     "x64-uefi")
+      $CC $CFLAGS $DIR/kernel.c -o $OUT/kernel.elf -DARCH_X64 \
+        -I ./src/kernel -I ./src/kernel/headers/ -I $DIR \
+        -mcmodel=kernel -Wl,--image-base=0xFFFFFFFFFFF00000 \
+        -masm=intel
+      # $CC $CFLAGS $USR/main.c -o $OUT/user_main.elf -DARCH_X64
       # $CC $CFLAGS $USER_FLAGS $USR/main.c -o $OUT/user_main.bin -DARCH_X64
-      $CC $CFLAGS $USR/main.c -o $OUT/user_main.elf -DARCH_X64
       # nasm -fbin src/user/example.s -o out/user/example.bin
       clang -I $DIR $CFLAGS $CLANG_UEFI_FLAGS \
-        -o $OUT/BOOTX64.EFI $DIR/main.c $DIR/utils.s -DARCH_X64 \
+        -o $OUT/BOOTX64.EFI $DIR/efi_boot.c $DIR/utils.s -DARCH_X64 \
         -I ./src/kernel -I ./src/kernel/headers -I $DIR
+
       mcopy -i fat.img $OUT/BOOTX64.EFI ::/EFI/BOOT -D o
+      mcopy -i fat.img $OUT/kernel.elf ::/ -D o
       ;;
     *)
       echo "Unknown taret '$TARGET'"

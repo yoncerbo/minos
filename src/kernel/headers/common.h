@@ -115,6 +115,8 @@ typedef enum {
   ELF_PROG_READABLE = 4,
 } ElfProgramHeaderFlags;
 
+void validate_elf_header(ElfHeader64 *elf);
+
 #include "kernel/interfaces/gpu.h"
 #include "kernel/interfaces/blk.h"
 #include "kernel/interfaces/input.h"
@@ -130,5 +132,10 @@ typedef struct {
 } Hardware;
 void kernel_init(Hardware *hw);
 void kernel_update(Hardware *hw);
+
+// TODO: Setup additional pages for protecting the stack
+ALIGNED(16) uint8_t USER_STACK[8 * 1024];
+ALIGNED(16) uint8_t INTERRUPT_STACK[8 * 1024];
+
 
 #endif

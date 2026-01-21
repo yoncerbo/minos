@@ -4,7 +4,6 @@
 #include "efi.h"
 
 // Source files
-#include "font.h"
 #include "interrupts.c"
 #include "drawing.c"
 #include "efi.c"
@@ -21,16 +20,9 @@
 #define MAX_PHYSICAL_RANGES 256
 PhysicalPageRange PAGE_RANGES[MAX_PHYSICAL_RANGES];
 
-ALIGNED(16) InterruptDescriptor IDT[256] = {0};
-Tss TSS;
-
 // TODO: Only the binary and stack should be mapped with user bit
 extern char USER_BINARY[], USER_BINARY_END[];
 extern char ELF_FILE[];
-
-// TODO: Setup additional pages for protecting the stack
-ALIGNED(16) uint8_t USER_STACK[8 * 1024];
-ALIGNED(16) uint8_t INTERRUPT_STACK[8 * 1024];
 
 NORETURN void kernel_main(void) {
   DEBUGX(BOOT_CONFIG.image_base);
@@ -98,9 +90,6 @@ NORETURN void kernel_main(void) {
 
   log("Setup GDT and TSS");
 
-  setup_idt(IDT);
-  log("Setup IDT");
-
   PageTable *pml4 = (void *)alloc_pages(&allocator, 1);
   memset(pml4, 0, PAGE_SIZE);
   size_t memory_size = 1024 * 1024 * 1024;
@@ -126,18 +115,7 @@ NORETURN void kernel_main(void) {
   enable_system_calls(&thread_context);
 
   ElfHeader64 *elf = (void *)ELF_FILE;
-  ASSERT(elf->magic == ELF_MAGIC);
-  ASSERT(elf->class == ELF_CLASS64);
-  ASSERT(elf->endianness == ELF_ENDIAN_LITTLE);
-  ASSERT(elf->os_abi == ELF_OS_ABI_SYSTEM_V);
-  ASSERT(elf->abi_version == 0);
-  ASSERT(elf->type == ELF_TYPE_EXECUTABLE);
-  ASSERT(elf->isa == ELF_ISA_X86_64);
-  ASSERT(elf->version == 1);
-
-  ASSERT(elf->header_size == 64);
-  ASSERT(elf->program_header_size == sizeof(ElfProgramHeader64));
-
+  validate_elf_header(elf);
   ElfProgramHeader64 *progs = (void *)(ELF_FILE + elf->program_table_offset);
 
   for (uint32_t i = 0; i < elf->program_table_entry_count; ++i) {
