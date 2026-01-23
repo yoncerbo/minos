@@ -8,7 +8,6 @@
 #include "drawing.c"
 #include "memory.c"
 #include "syscalls.c"
-#include "user.c"
 #include "logging.c"
 #include "elf.c"
 #include "gdt.c"
@@ -221,13 +220,13 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
   data->pml4 = pml4;
   memset(pml4, 0, PAGE_SIZE);
 
+  // BUG: Why does it need a user flag?
   map_pages(&data->alloc, pml4, initial_pages_start, initial_pages_start, initial_page_count * PAGE_SIZE,
       PAGE_BIT_WRITABLE | PAGE_BIT_PRESENT | PAGE_BIT_USER);
   map_pages(&data->alloc, pml4, (paddr_t)loaded_image->image_base, (vaddr_t)loaded_image->image_base,
-      loaded_image->image_size, PAGE_BIT_WRITABLE | PAGE_BIT_PRESENT | PAGE_BIT_USER);
+      loaded_image->image_size, PAGE_BIT_WRITABLE | PAGE_BIT_PRESENT);
   map_pages(&data->alloc, pml4, (paddr_t)data->fb.ptr, (vaddr_t)data->fb.ptr,
-      data->fb.height * data->fb.pitch,
-      PAGE_BIT_WRITABLE | PAGE_BIT_USER | PAGE_BIT_PRESENT);
+      data->fb.height * data->fb.pitch, PAGE_BIT_WRITABLE | PAGE_BIT_PRESENT);
 
   EfiFileHandle *kernel_file = open_efi_file(root, L"kernel.elf", EFI_FILE_MODE_READ, 0);
   ASSERT(kernel_file && "Failed to open kernel file");
@@ -251,7 +250,7 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
   paddr_t kernel_stack = alloc_pages2(&data->alloc, 8);
   vaddr_t higher_half = 0xFFFF800000000000;
   map_pages(&data->alloc, pml4, kernel_stack, higher_half, 8 * PAGE_SIZE,
-      PAGE_BIT_PRESENT | PAGE_BIT_WRITABLE | PAGE_BIT_USER);
+      PAGE_BIT_PRESENT | PAGE_BIT_WRITABLE);
 
   // TODO: Setup uart for logging and use it instead of the console
   // TODO: Make our own console?

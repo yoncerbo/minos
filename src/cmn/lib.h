@@ -129,7 +129,6 @@ void log(const char *format, ...);
 
 Sink *LOG_SINK = NULL;
 
-
 #include "strings.c"
 #include "print.c"
 

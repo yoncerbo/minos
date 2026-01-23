@@ -36,11 +36,17 @@ void _start(BootData *data) {
   vaddr_t user_entry;
   load_elf_file(&data->alloc, data->pml4, data->user_efi_file, &user_entry);
 
+  paddr_t user_stack = alloc_pages2(&data->alloc, 4);
+  paddr_t user_stack_top = user_stack + 4 * PAGE_SIZE - 1;
+
+  map_pages(&data->alloc, data->pml4, user_stack, user_stack, PAGE_SIZE * 4,
+      PAGE_BIT_PRESENT | PAGE_BIT_WRITABLE | PAGE_BIT_USER);
+
   ASM("mov cr3, %0" :: "r"((size_t)data->pml4 & PAGE_ADDR_MASK));
 
   log("Running user program");
   size_t status;
-  status = run_user_program((void *)user_entry, &USER_STACK[sizeof(USER_STACK) - 1]);
+  status = run_user_program((void *)user_entry, (void *)user_stack_top);
   DEBUGD(status);
 
   log("OK");

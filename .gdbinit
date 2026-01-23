@@ -5,3 +5,5 @@ delete 1
 set $base = *(unsigned long long *)(0x10000 + 8)
 add-symbol-file out/x64-uefi/BOOTX64.EFI -o $base
 set disassembly-flavor intel
+
+add-symbol-file out/x64-uefi/kernel.elf

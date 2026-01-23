@@ -4,6 +4,7 @@ set -e
 
 CFLAGS="$CFLAGS
   -std=c99 -O1
+  -g3
   -I ./src 
   -Wall -Wextra -pedantic-errors
   -Wno-unused-parameter -Wno-unused-const-variable -Wno-unused-variable -Wno-unused-function

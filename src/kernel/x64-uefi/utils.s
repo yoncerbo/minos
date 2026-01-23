@@ -50,7 +50,6 @@ load_gdt_table:
 
 .extern handle_syscall
 
-USER_SP: .quad 0
 syscall_stub:
   swapgs # swap KERNEL_GS_BAS and GS_BAS MSRs
   mov gs:CTX_USER_SP, rsp
