@@ -204,7 +204,10 @@ typedef struct {
   PageAllocator2 alloc;
   Surface fb;
   Font font;
+  uint8_t *user_efi_file;
 } BootData;
 
+void validate_elf_header(ElfHeader64 *elf);
+void load_elf_file(PageAllocator2 *alloc, PageTable *pml4, void *file, vaddr_t *out_entry);
 
 #endif

@@ -44,6 +44,7 @@ typedef struct {
 
 #define SYSV __attribute__((sysv_abi))
 #define ASM __asm__ __volatile__
+#define INCLUDE_ASM(file) __asm__(".include \"" file "\"")
 #define TRAP __builtin_trap
 #define PACKED __attribute__((packed))
 #define ALIGNED(n) __attribute__((aligned(n)))

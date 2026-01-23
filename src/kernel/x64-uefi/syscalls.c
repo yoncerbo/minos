@@ -27,8 +27,6 @@ NORETURN void sys_exit(size_t error_code) {
 }
 
 SYSV size_t handle_syscall(SyscallFrame *frame) {
-  ASSERT(frame);
-
   // TODO: Getting kernel thread context
   switch (frame->rax) {
     case SYS_LOG: {
@@ -39,7 +37,7 @@ SYSV size_t handle_syscall(SyscallFrame *frame) {
         frame->rax = SYS_ERR_BAD_ARG;
         return 0;
       }
-      prints(LOG_SINK, "%S", limit, str);
+      prints(LOG_SINK, "[USER]%S", limit, str);
     } break;
     case SYS_EXIT: {
       frame->rax = frame->rdi;

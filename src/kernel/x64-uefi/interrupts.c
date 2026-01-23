@@ -62,6 +62,9 @@ typedef enum {
 
 SYSV IsrFrame *interrupt_handler(IsrFrame *frame) {
   switch (frame->vector_number) {
+    case INT_GENERAL_PROTECTION: {
+      log("General protection fault");
+    } break;
     case INT_PAGE_FAULT: {
       size_t cr2;
       ASM("mov %0, cr2" : "=r"(cr2));

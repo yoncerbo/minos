@@ -41,7 +41,7 @@ void fill_surface(Surface *surface, uint32_t color) {
 }
 
 void load_psf2_font(Font *out_font, void *file) {
-  Psf2Header *psf = (void *)PSF_FONT_START;
+  Psf2Header *psf = (void *)file;
   ASSERT(psf->magic == PSF2_MAGIC);
   ASSERT(psf->version == 0);
   ASSERT(psf->header_size == 32);
@@ -52,5 +52,5 @@ void load_psf2_font(Font *out_font, void *file) {
   out_font->width = psf->width_pixels;
   out_font->height = psf->height_pixels;
   out_font->glyph_size = psf->bytes_per_glyph;
-  out_font->glyphs = (uint8_t *)PSF_FONT_START + 32;
+  out_font->glyphs = (uint8_t *)file + 32;
 }

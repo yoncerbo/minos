@@ -4,8 +4,7 @@
 int global = 432;
 
 int main(void) {
-  log("hello world %d", 123);
-
+  log("hello from the userspace: %d", global);
   return global;
 }
 

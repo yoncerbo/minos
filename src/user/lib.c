@@ -1,7 +1,7 @@
 #include "cmn/lib.h"
 
 SyscallError sys_log(const char *str, size_t limit) {
-  size_t result = SYS_WRITE;
+  size_t result = SYS_LOG;
   ASM("syscall" : "+a"(result) : "D"(str), "S"(limit));
   return result;
 }
@@ -14,6 +14,7 @@ NORETURN void sys_exit(size_t error_code) {
 
 Error sys_log_sink_write(void *this, const void *buffer, uint32_t limit) {
   sys_log(buffer, limit);
+  return OK;
 }
 
 Sink SYS_LOG_SINK = {

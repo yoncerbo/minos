@@ -80,16 +80,7 @@ uint8_t compute_acpi_checksum(void *start, size_t length) {
 uint8_t MEMORY_MAP[1024 * 32];
 ALIGNED(16) uint8_t KERNEL_STACK[8 * 1024];
 
-SYSV void jump_to_kernel(BootData *data, size_t entry_addr) {
-  log("Hello, kernel");
-
-  ASM("mov cr3, %0" :: "r"((size_t)data->pml4 & PAGE_ADDR_MASK));
-
-  ASM("jmp %0" :: "r"(entry_addr), "D"(data));
-
-  for (;;) WFI();
-}
-
+SYSV void jump_to_kernel(BootData *data, size_t entry_addr);
 EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
   st->con_out->clear_screen(st->con_out);
   EFI_SINK.out = st->con_out;
@@ -102,6 +93,8 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
   paddr_t pages_start;
   status = st->boot_services->allocate_pages(EFI_ALLOC_ANY_PAGES,
       EFI_BOOT_SERVICES_DATA, page_count, &pages_start);
+  paddr_t initial_pages_start = pages_start;
+  size_t initial_page_count = page_count;
   ASSERT(!status && "Failed to allocate memory");
 
   ASSERT(page_count > SIZEOF_IN_PAGES(BootData));
@@ -211,16 +204,29 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
     LOG_SINK = &FB_SINK.sink;
   }
 
+  {
+    EfiFileHandle *user_file = open_efi_file(root, L"user_main.elf", EFI_FILE_MODE_READ, 0);
+    ASSERT(user_file && "Failed to open user program file");
+
+    EfiFileInfo info;
+    status = get_efi_file_info(user_file, &info);
+    ASSERT(!status && "Failed to get file info");
+    paddr_t buffer = alloc_pages2(&data->alloc, (info.file_size + PAGE_SIZE - 1) / PAGE_SIZE);
+    read_efi_file(user_file, (void *)buffer, info.file_size);
+
+    data->user_efi_file = (void *)buffer;
+  }
+
   PageTable *pml4 = (void *)alloc_pages2(&data->alloc, 1);
   data->pml4 = pml4;
   memset(pml4, 0, PAGE_SIZE);
 
-  map_pages(&data->alloc, pml4, pages_start, pages_start, page_count * PAGE_SIZE,
+  map_pages(&data->alloc, pml4, initial_pages_start, initial_pages_start, initial_page_count * PAGE_SIZE,
       PAGE_BIT_WRITABLE | PAGE_BIT_PRESENT | PAGE_BIT_USER);
   map_pages(&data->alloc, pml4, (paddr_t)loaded_image->image_base, (vaddr_t)loaded_image->image_base,
       loaded_image->image_size, PAGE_BIT_WRITABLE | PAGE_BIT_PRESENT | PAGE_BIT_USER);
-  map_pages(&data->alloc, pml4, (paddr_t)BOOT_CONFIG.fb.ptr, (vaddr_t)BOOT_CONFIG.fb.ptr,
-      BOOT_CONFIG.fb.height * BOOT_CONFIG.fb.pitch,
+  map_pages(&data->alloc, pml4, (paddr_t)data->fb.ptr, (vaddr_t)data->fb.ptr,
+      data->fb.height * data->fb.pitch,
       PAGE_BIT_WRITABLE | PAGE_BIT_USER | PAGE_BIT_PRESENT);
 
   EfiFileHandle *kernel_file = open_efi_file(root, L"kernel.elf", EFI_FILE_MODE_READ, 0);
@@ -238,30 +244,9 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
   status = kernel_file->read(kernel_file, &kernel_size, (void *)kernel_addr);
   ASSERT(!status && "Failed to read kernel file");
 
-  size_t kernel_entry;
-  {
-    ElfHeader64 *elf = (void *)kernel_addr;
-    validate_elf_header(elf);
-
-    ElfProgramHeader64 *progs = (void *)(kernel_addr + elf->program_table_offset);
-    for (uint32_t i = 0; i < elf->program_table_entry_count; ++i) {
-      ElfProgramHeader64 *prog = &progs[i];
-      if (progs->type != ELF_PROG_EXECUTABLE) continue;
-      log("program header: %d, type=%d", i, progs->type);
-      ASSERT(prog->alignment <= PAGE_SIZE);
-
-      uint32_t page_count = (PAGE_SIZE - 1 + prog->size_in_memory) / PAGE_SIZE;
-
-      paddr_t physical = alloc_pages2(&data->alloc, page_count);
-
-      memcpy((void *)physical, (void *)(kernel_addr + prog->file_offset), prog->size_in_file);
-
-      map_pages(&data->alloc, pml4, physical, prog->virtual_addr, prog->size_in_memory,
-          PAGE_BIT_PRESENT | PAGE_BIT_WRITABLE | PAGE_BIT_USER);
-    }
-    kernel_entry = elf->program_entry_addr;
-    push_free_pages(&data->alloc, kernel_addr, size_in_pages);
-  }
+  vaddr_t kernel_entry;
+  load_elf_file(&data->alloc, pml4, (void *)kernel_addr, &kernel_entry);
+  push_free_pages(&data->alloc, kernel_addr, size_in_pages);
 
   paddr_t kernel_stack = alloc_pages2(&data->alloc, 8);
   vaddr_t higher_half = 0xFFFF800000000000;
@@ -291,19 +276,38 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
     }
   } while (IS_EFI_ERROR(status));
 
-  BOOT_CONFIG.memory_map_size = memory_map_size;
-  BOOT_CONFIG.memory_descriptor_size = memory_descriptor_size;
+
+  int count = memory_map_size / memory_descriptor_size;
+
+  for (size_t offset = 0; offset < memory_map_size; offset += memory_descriptor_size) {
+    EfiMemoryDescriptor *desc = (void *)(MEMORY_MAP + offset);
+    // NOTE: We only handle one code section for now
+    ASSERT(desc->type != EFI_LOADER_DATA);
+    if (desc->type == EFI_CONVENTIONAL_MEMORY ) {
+        // NOTE: We can't write to those areas before we set up our page tables
+        // desc->type == EFI_BOOT_SERVICES_CODE || desc->type == EFI_BOOT_SERVICES_DATA) {
+      push_free_pages(&data->alloc, desc->physical_start, desc->number_of_pages);
+    }
+  }
+
+  paddr_t biggest_memory_addr = 0;
+  size_t pages_total = 0;
+  for (size_t i = 0; i < data->alloc.len; ++i) {
+    PhysicalPageRange range = data->alloc.ranges[i];
+    log("Memory %d addr=%X, pages=%d", i, range.start, range.page_count);
+    pages_total += range.page_count;
+    paddr_t end = range.start + range.page_count * PAGE_SIZE;
+    if (end > biggest_memory_addr) biggest_memory_addr = end;
+  }
+  DEBUGD(pages_total);
 
   ASM("cli");
-  log("Interrupts disabled");
 
   paddr_t interrupt_stack = alloc_pages2(&data->alloc, 2);
   paddr_t interrupt_stack_top = interrupt_stack + 2 * PAGE_SIZE - 1;
 
   setup_gdt_and_tss((GdtEntry *)&data->gdt, &data->tss, (void *)interrupt_stack_top);
-
   setup_idt((InterruptDescriptor *)&data->idt);
-  log("Setup IDT");
 
   log("OK");
 
@@ -315,3 +319,14 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
    );
   UNREACHABLE();
 }
+
+SYSV void jump_to_kernel(BootData *data, size_t entry_addr) {
+  log("Hello, kernel");
+
+  ASM("mov cr3, %0" :: "r"((size_t)data->pml4 & PAGE_ADDR_MASK));
+
+  ASM("jmp %0" :: "r"(entry_addr), "D"(data));
+
+  for (;;) WFI();
+}
+
