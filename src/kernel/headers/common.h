@@ -6,6 +6,16 @@
 typedef size_t paddr_t;
 typedef size_t vaddr_t;
 
+typedef enum {
+  IS_CAPSLOCK = 1 << 0,
+  IS_LSHIFT = 1 << 1,
+  IS_RSHIFT = 1 << 2,
+} TextInputFlags;
+
+typedef struct {
+  uint32_t flags;
+} TextInputState;
+
 extern char PSF_FONT_START[];
 
 const uint16_t PSF1_MAGIC = 0x0436;

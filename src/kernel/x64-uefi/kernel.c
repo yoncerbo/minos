@@ -2,6 +2,7 @@
 #include "common.h"
 #include "arch.h"
 
+#include "interfaces/input.h"
 #include "memory.c"
 #include "interrupts.c"
 #include "gdt.c"
@@ -11,6 +12,7 @@
 #include "elf.c"
 #include "apic.c"
 #include "pci.c"
+#include "text_input.c"
 
 INCLUDE_ASM("utils.s");
 
@@ -20,6 +22,10 @@ ALIGNED(16) InterruptDescriptor IDT[256];
 
 uint8_t INTERUPT_STACK[PAGE_SIZE];
 uint8_t USER_STACK[4 * PAGE_SIZE];
+
+uint8_t SCANCODE_TO_KEY[256] = {
+  [1] = KEY_ESC,
+};
 
 void _start(BootData *data) {
   LOG_SINK = &QEMU_DEBUGCON_SINK;
@@ -70,7 +76,30 @@ void _start(BootData *data) {
 
   ASM("sti");
 
+  TextInputState text_input = {0};
+
+  uint32_t scancode_processed = 0;
+
+  // SOURCE: https://wiki.osdev.org/PS/2_Keyboard
   for(;;) {
     WFI();
+    uint32_t diff = SCANCODE_POSITION - scancode_processed;
+    for (uint32_t i = 0; i < diff; ++i) {
+      uint8_t scancode = SCANCODE_BUFFER[scancode_processed++ % SCANCODE_BUFFER_SIZE];
+      // TODO: Support more scancodes
+      // TODO: Handling keys with multiple scancodes
+      uint32_t released = scancode >> 7;
+      scancode &= 128 - 1;
+      if (!scancode || scancode > KEY_F12) continue;
+
+      InputEvent event = {
+        .type = EV_KEY,
+        .code = scancode,
+        .value = released ? 0 : 1,
+      };
+
+      char ch = push_input_event(&text_input, event);
+      if (ch) prints(LOG_SINK, "%c", ch);
+    }
   }
 }

@@ -16,7 +16,6 @@ void set_idt_descriptor(InterruptDescriptor *idt, uint8_t descriptor_index, size
   };
 }
 
-
 // SOURCE: AMD Volume 2: 8.4.2
 typedef enum {
   PAGE_FAULT_PROTECTION_VIOLATION = 1 << 0,
@@ -71,7 +70,7 @@ SYSV IsrFrame *interrupt_handler(IsrFrame *frame) {
       log("Page fault, cr2=%X", cr2);
     } break;
     case 240: {
-      prints(LOG_SINK, ".");
+      // prints(LOG_SINK, ".");
       volatile uint32_t *apic_regs = get_apic_regs();
       apic_regs[APIC_TIMER_TICKS] = 1000000000;
       apic_regs[APIC_END_OF_INTERRUPT] = 0;
@@ -80,8 +79,9 @@ SYSV IsrFrame *interrupt_handler(IsrFrame *frame) {
     case 241: {
       uint8_t scancode;
       READ_PORT(0x60, scancode);
-      DEBUGD(scancode);
-
+      if (scancode) {
+        SCANCODE_BUFFER[SCANCODE_POSITION++ % SCANCODE_BUFFER_SIZE] = scancode;
+      }
       volatile uint32_t *apic_regs = get_apic_regs();
       apic_regs[APIC_END_OF_INTERRUPT] = 0;
       return frame;

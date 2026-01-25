@@ -14,18 +14,6 @@ typedef struct PACKED {
   size_t r11; // flags
 } SyscallFrame;
 
-SyscallError sys_log(const char *str, size_t limit) {
-  size_t result = SYS_LOG;
-  ASM("syscall" : "+a"(result) : "D"(str), "S"(limit));
-  return result;
-}
-
-NORETURN void sys_exit(size_t error_code) {
-  size_t result = SYS_EXIT;
-  ASM("syscall" :: "a"(result), "D"(error_code));
-  UNREACHABLE();
-}
-
 SYSV size_t handle_syscall(SyscallFrame *frame) {
   // TODO: Getting kernel thread context
   switch (frame->rax) {

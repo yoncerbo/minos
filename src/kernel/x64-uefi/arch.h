@@ -235,4 +235,9 @@ void write_ioapic_register(size_t io_apic_addr, size_t register_select, uint32_t
 
 void discover_pci_devices(PageAllocator2 *alloc, PageTable *pml4);
 
+#define SCANCODE_BUFFER_SIZE 128
+uint8_t SCANCODE_BUFFER[SCANCODE_BUFFER_SIZE];
+uint32_t SCANCODE_POSITION = 0;
+
+
 #endif
