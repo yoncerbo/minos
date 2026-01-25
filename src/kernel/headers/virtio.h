@@ -95,9 +95,9 @@ typedef struct PACKED {
 } Virtq;
 
 Virtq *virtq_create(VirtioDevice *dev, uint32_t index);
-inline void virtq_descf(Virtq *vq, void *addr, uint16_t len, bool is_write);
-inline void virtq_descm(Virtq *vq, void *addr, uint16_t len, bool is_write);
-inline void virtq_descl(Virtq *vq, void *addr, uint16_t len, bool is_write);
+void virtq_descf(Virtq *vq, void *addr, uint16_t len, bool is_write);
+void virtq_descm(Virtq *vq, void *addr, uint16_t len, bool is_write);
+void virtq_descl(Virtq *vq, void *addr, uint16_t len, bool is_write);
 
 typedef enum {
   VIRTIO_BLK_IN = 0, // read
