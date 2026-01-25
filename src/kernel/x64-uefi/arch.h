@@ -175,8 +175,8 @@ typedef struct {
 FbSink FB_SINK;
 Sink QEMU_DEBUGCON_SINK;
 
-#define GS_RELATIVE __attribute__((address_space(256)))
-GS_RELATIVE const KernelThreadContext *CONTEXT = 0;
+// #define GS_RELATIVE __attribute__((address_space(256)))
+// GS_RELATIVE const KernelThreadContext *CONTEXT = 0;
 
 typedef struct {
   size_t start;
@@ -230,7 +230,9 @@ enum {
 
 uint32_t setup_apic(PageAllocator2 *alloc, PageTable *pml4);
 volatile uint32_t *get_apic_regs(void);
-uint32_t read_ioapic_register(uint32_t io_apic_addr, uint32_t register_select);
-void write_ioapic_register(uint32_t io_apic_addr, uint32_t register_select, uint32_t value);
+uint32_t read_ioapic_register(size_t io_apic_addr, size_t register_select);
+void write_ioapic_register(size_t io_apic_addr, size_t register_select, uint32_t value);
+
+void discover_pci_devices(PageAllocator2 *alloc, PageTable *pml4);
 
 #endif

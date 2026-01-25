@@ -80,7 +80,7 @@ volatile uint32_t *get_apic_regs(void) {
   return (void *)apic_addr;
 }
 
-uint32_t read_ioapic_register(uint32_t io_apic_addr, uint32_t register_select) {
+uint32_t read_ioapic_register(size_t io_apic_addr, size_t register_select) {
   volatile uint32_t *sel = (void *)io_apic_addr;
   volatile uint32_t *reg = (void *)(io_apic_addr + 16);
 
@@ -88,7 +88,7 @@ uint32_t read_ioapic_register(uint32_t io_apic_addr, uint32_t register_select) {
   return *reg;
 }
 
-void write_ioapic_register(uint32_t io_apic_addr, uint32_t register_select, uint32_t value) {
+void write_ioapic_register(size_t io_apic_addr, size_t register_select, uint32_t value) {
   volatile uint32_t *sel = (void *)io_apic_addr;
   volatile uint32_t *reg = (void *)(io_apic_addr + 16);
 
