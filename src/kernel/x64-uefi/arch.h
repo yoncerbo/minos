@@ -159,6 +159,7 @@ typedef struct PACKED {
 } SdtHeader;
 
 #define WRITE_PORT(port, value) ASM("out %0, %1" :: "i"(port), "a"(value));
+#define READ_PORT(port, value) ASM("in %0, %1" : "=a"(value) : "i"(port));
 
 #define WRITE_MSR(msr, low32, high32) ASM("wrmsr" :: "c"(msr), "a"(low32), "d"(high32))
 #define READ_MSR(msr, low32, high32) ASM("rdmsr" : "=a"(low32), "=d"(high32) : "c"(msr))
@@ -205,9 +206,31 @@ typedef struct {
   Surface fb;
   Font font;
   uint8_t *user_efi_file;
+  size_t io_apic_addr;
+  uint32_t pit_interrupt;
 } BootData;
 
 void validate_elf_header(ElfHeader64 *elf);
 void load_elf_file(PageAllocator2 *alloc, PageTable *pml4, void *file, vaddr_t *out_entry);
+
+enum {
+  APIC_LOCAL_ID = 0x20 / 4,
+  APIC_END_OF_INTERRUPT = 0xB0 / 4,
+  APIC_SPURIOUS_VECTOR = 0xF0 / 4,
+  APIC_LVT = 0x320 / 4,
+  APIC_TIMER_TICKS = 0x380 / 4,
+};
+
+enum {
+  IO_APIC_ID = 0,
+  IO_APIC_VER = 1,
+  IO_APIC_ARB = 2,
+  IO_APIC_REDTBL = 3,
+};
+
+uint32_t setup_apic(PageAllocator2 *alloc, PageTable *pml4);
+volatile uint32_t *get_apic_regs(void);
+uint32_t read_ioapic_register(uint32_t io_apic_addr, uint32_t register_select);
+void write_ioapic_register(uint32_t io_apic_addr, uint32_t register_select, uint32_t value);
 
 #endif

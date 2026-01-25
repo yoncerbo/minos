@@ -70,6 +70,22 @@ SYSV IsrFrame *interrupt_handler(IsrFrame *frame) {
       ASM("mov %0, cr2" : "=r"(cr2));
       log("Page fault, cr2=%X", cr2);
     } break;
+    case 240: {
+      prints(LOG_SINK, ".");
+      volatile uint32_t *apic_regs = get_apic_regs();
+      apic_regs[APIC_TIMER_TICKS] = 1000000000;
+      apic_regs[APIC_END_OF_INTERRUPT] = 0;
+      return frame;
+    } break;
+    case 241: {
+      uint8_t scancode;
+      READ_PORT(0x60, scancode);
+      DEBUGD(scancode);
+
+      volatile uint32_t *apic_regs = get_apic_regs();
+      apic_regs[APIC_END_OF_INTERRUPT] = 0;
+      return frame;
+    } break;
     default: {
       log("An interrupt occured: vector=%d", frame->vector_number);
     } break;

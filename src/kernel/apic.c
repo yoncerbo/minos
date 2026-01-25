@@ -1,3 +1,4 @@
+#include "cmn/lib.h"
 #include "common.h"
 #include "arch.h"
 
@@ -19,14 +20,6 @@ enum {
   MSR_APIC_BASE = 0x1B,
 };
 
-enum {
-  APIC_LOCAL_ID = 0x20 / 4,
-  APIC_END_OF_INTERRUPT = 0xB0 / 4,
-  APIC_SPURIOUS_VECTOR = 0xF0 / 4,
-  APIC_LVT = 0x320 / 4,
-  APIC_TIMER_TICKS = 0x380 / 4,
-};
-
 // SOURCE: https://wiki.osdev.org/8259_PIC#Disabling
 
 void disable_pic(void) {
@@ -42,8 +35,6 @@ void disable_pic(void) {
   WRITE_PORT(PIC_MASTER_DATA, ICW_8086_MODE);
   WRITE_PORT(PIC_SLAVE_DATA, ICW_8086_MODE);
 
-  WRITE_PORT(PIC_MASTER_DATA, 0xFF); // mask out all the interrupts
-  WRITE_PORT(PIC_SLAVE_DATA, 0xFF);
 }
 
 void set_pit_periodic(uint16_t count) {
@@ -52,27 +43,55 @@ void set_pit_periodic(uint16_t count) {
   WRITE_PORT(0x40, count >> 8);
 }
 
-void setup_apic(void) {
+uint32_t setup_apic(PageAllocator2 *alloc, PageTable *pml4) {
   // TODO: Make sure APIC is present using CPUID intruction
-  disable_pic();
+
+  WRITE_PORT(PIC_MASTER_DATA, 0xFF); // mask out all the interrupts
+  WRITE_PORT(PIC_SLAVE_DATA, 0xFF);
 
   uint32_t low, high;
   READ_MSR(MSR_APIC_BASE, low, high);
 
   if (low & (1 << 8)) {
-    printf("Bootstrap processor\n");
+    log("Bootstrap processor");
   }
   ASSERT(low & (1 << 11)); // APIC global enable
 
   // TODO: map the address
   size_t apic_addr = low & 0xFFFFF000;
   DEBUGX(apic_addr);
+  map_pages(alloc, pml4, apic_addr, apic_addr, PAGE_SIZE * 4,
+      PAGE_BIT_WRITABLE | PAGE_BIT_PRESENT);
+  ASM("mov cr3, %0" :: "r"((size_t)pml4 & PAGE_ADDR_MASK));
   volatile uint32_t *apic_regs = (void *)apic_addr;
 
   apic_regs[APIC_SPURIOUS_VECTOR] = 0x1FF;
 
-  set_pit_periodic(1000);
-  // Configure the timer
-  // apic_regs[APIC_LVT] = 0xF0;
-  // apic_regs[APIC_TIMER_TICKS] = 100;
+  apic_regs[APIC_LVT] = 0xF0;
+  apic_regs[APIC_TIMER_TICKS] = 0;
+
+  return apic_regs[APIC_LOCAL_ID];
+}
+
+volatile uint32_t *get_apic_regs(void) {
+  uint32_t low, high;
+  READ_MSR(MSR_APIC_BASE, low, high);
+  size_t apic_addr = low & 0xFFFFF000;
+  return (void *)apic_addr;
+}
+
+uint32_t read_ioapic_register(uint32_t io_apic_addr, uint32_t register_select) {
+  volatile uint32_t *sel = (void *)io_apic_addr;
+  volatile uint32_t *reg = (void *)(io_apic_addr + 16);
+
+  *sel = register_select;
+  return *reg;
+}
+
+void write_ioapic_register(uint32_t io_apic_addr, uint32_t register_select, uint32_t value) {
+  volatile uint32_t *sel = (void *)io_apic_addr;
+  volatile uint32_t *reg = (void *)(io_apic_addr + 16);
+
+  *sel = register_select;
+  *reg = value;
 }

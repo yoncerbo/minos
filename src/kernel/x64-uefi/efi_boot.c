@@ -11,6 +11,7 @@
 #include "logging.c"
 #include "elf.c"
 #include "gdt.c"
+#include "apic.c"
 
 #define MAX_PHYSICAL_RANGES 256
 PhysicalPageRange PAGE_RANGES[MAX_PHYSICAL_RANGES];
@@ -184,10 +185,63 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
 
       for (uint32_t i = 0; i < entry_count; ++i) {
         SdtHeader *header = (void *)(size_t)entries[i];
-        // log("sdt entry: %S", 4, header->signature);
+
+        ASSERT(compute_acpi_checksum(header, header->length) == 0);
+
+        // SOURCE: https://uefi.org/specs/ACPI/6.6/05_ACPI_Software_Programming_Model.html#io-apic-structure
+        if (are_strings_equal(header->signature, "APIC", 4)) {
+          log("got madt");
+
+          uint32_t offset = 44;
+
+          typedef struct PACKED {
+            uint8_t type;
+            uint8_t size;
+          } Controller;
+
+          while (offset < header->length) {
+            Controller *cnt = (void *)((uint8_t *)header + offset);
+            offset += cnt->size;
+
+            enum {
+              IO_APIC_TYPE = 1,
+              INTERRUPT_SOURCE_OVERRIDE = 2,
+            };
+
+            if (cnt->type == IO_APIC_TYPE) {
+              struct {
+                Controller cnt;
+                uint8_t io_apic_id;
+                uint8_t reserved;
+                uint32_t io_apic_addr;
+                uint32_t global_system_interrupt_base;
+              } *config = (void *)cnt;
+
+              data->io_apic_addr = config->io_apic_addr;
+            } else if (cnt->type == INTERRUPT_SOURCE_OVERRIDE) {
+              struct {
+                Controller cnt;
+                uint8_t bus;
+                uint8_t source;
+                uint32_t global_system_interrupt;
+                uint16_t flags;
+              } *config = (void *)cnt;
+
+              enum {
+                INTERRUPT_PIT = 0,
+              };
+
+              if (config->source == INTERRUPT_PIT) data->pit_interrupt = config->global_system_interrupt;
+            }
+          }
+
+        }
       }
     }
   }
+
+  ASSERT(data->io_apic_addr);
+  ASSERT(data->pit_interrupt);
 
   {
     EfiFileHandle *font_file = open_efi_file(root, L"font1.psf", EFI_FILE_MODE_READ, 0);
