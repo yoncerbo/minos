@@ -187,6 +187,7 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
         SdtHeader *header = (void *)(size_t)entries[i];
 
         ASSERT(compute_acpi_checksum(header, header->length) == 0);
+        log("signature: %S", 4, header->signature);
 
         // SOURCE: https://uefi.org/specs/ACPI/6.6/05_ACPI_Software_Programming_Model.html#io-apic-structure
         if (are_strings_equal(header->signature, "APIC", 4)) {
@@ -235,13 +236,31 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
             }
           }
 
+        } else if (are_strings_equal(header->signature, "MCFG", 4)) {
+          uint32_t offset = 44;
+
+          // SOURCE: https://wiki.osdev.org/PCI_Express#Enhanced_Configuration_Mechanism
+          while (offset < header->length) {
+            struct {
+              uint64_t base_addr;
+              uint16_t pci_segment_group_number;
+              uint8_t start_pci_bus_number;
+              uint8_t end_pci_bus_number;
+              uint32_t reserved;
+            } *config = (void *)((uint8_t *)header + offset);
+
+            DEBUGD(config->base_addr);
+            DEBUGD(config->pci_segment_group_number);
+            DEBUGD(config->start_pci_bus_number);
+            DEBUGD(config->end_pci_bus_number);
+
+            offset += sizeof(*config);
+          }
         }
       }
     }
   }
-
-  ASSERT(data->io_apic_addr);
-  ASSERT(data->pit_interrupt);
+  // for (;;) WFI();
 
   {
     EfiFileHandle *font_file = open_efi_file(root, L"font1.psf", EFI_FILE_MODE_READ, 0);

@@ -114,6 +114,7 @@ run() {
       qemu-system-x86_64 $X64_QEMU_FLAGS \
         -debugcon mon:stdio \
         -d int \
+        -device virtio-keyboard-pci \
       ;;
     *)
       echo "Unknown taret '$TARGET'"
