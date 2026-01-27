@@ -45,6 +45,24 @@ enum {
   KEY_PRESSED = 1,
 };
 
+void process_console_command(Console *c) {
+  uint32_t start;
+  for (start = 0; start < c->buffer_pos; ++start) {
+    if (c->command_buffer[start] != ' ') break;
+  }
+  uint32_t last;
+  for (last = c->buffer_pos - 1; last > start; --last) {
+    if (c->command_buffer[last] != ' ') break;
+  }
+  uint32_t len = last + 1 - start;
+
+  if (len == 4 && are_strings_equal("ping", &c->command_buffer[start], 4)) {
+    prints(&c->sink, "pong\n");
+  } else {
+    prints(&c->sink, "Unknown command: '%S'\n", len, &c->command_buffer[start]);
+  }
+}
+
 void push_console_input_event(Console *c, InputEvent event) {
   if (event.type != EV_KEY) return;
 
@@ -74,15 +92,8 @@ void push_console_input_event(Console *c, InputEvent event) {
       draw_char3(&c->surface, &c->font, c->x, c->y, c->fg, c->bg, ' ');
       c->x = 0;
       c->y += c->font.height;
-
-      // TODO: Stripping the command
-      if (c->buffer_pos == 4 && are_strings_equal("ping", c->command_buffer, 4)) {
-        prints(&c->sink, "pong\n");
-      } else {
-        prints(&c->sink, "Unknown command: '%S'\n", c->buffer_pos, c->command_buffer);
-      }
+      process_console_command(c);
       c->buffer_pos = 0;
-
       prints(&c->sink, "> ");
     } break;
     case KEY_BACKSPACE: {

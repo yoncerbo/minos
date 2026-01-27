@@ -89,7 +89,7 @@ void _start(BootData *data) {
     .bg = 0x11111111,
     .fg = WHITE,
   };
-  LOG_SINK = &QEMU_DEBUGCON_SINK;
+  LOG_SINK = &console.sink;
 
   clear_console(&console);
 
