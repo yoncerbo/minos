@@ -24,8 +24,9 @@ CLANG_UEFI_FLAGS="-target x86_64-pc-win32-coff
   -Wl,-subsystem:efi_application
   -Wl,/base:0
   -fuse-ld=lld-link
-  -g -gdwarf
+  -g
 "
+  # -gdwarf
 
 DIR=src/kernel/$TARGET
 USR=src/user

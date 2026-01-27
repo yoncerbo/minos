@@ -23,6 +23,18 @@ void draw_char2(Surface *surface, Font *font, int x, int y, uint32_t color, uint
   }
 }
 
+void draw_char3(Surface *surface, Font *font, int x, int y, uint32_t fg, uint32_t bg, uint8_t character) {
+  // TODO: Clip the character if outside of bounds
+  for (uint32_t i = 0; i < font->height; ++i) {
+    uint32_t *row = (uint32_t *)((uint8_t *)surface->ptr + surface->pitch * (y + i) + x * 4);
+    // TODO: Bounds checking
+    for (uint32_t j = 0; j < font->width; ++j, ++row) {
+      uint32_t color = font->glyphs[character * font->glyph_size + i] & (1 << (8 - j)) ? fg : bg;
+      *row = color;
+    }
+  }
+}
+
 const uint32_t FONT_HEIGHT = 12;
 
 void draw_line(Surface *surface, int x, int y, uint32_t color, const char *str, uint32_t limit) {

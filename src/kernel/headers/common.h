@@ -2,6 +2,7 @@
 #define INCLUDE_COMMON
 
 #include "cmn/lib.h"
+#include "interfaces/input.h"
 
 typedef size_t paddr_t;
 typedef size_t vaddr_t;
@@ -45,6 +46,21 @@ typedef struct {
   uint8_t *glyphs;
 } Font;
 
+typedef struct {
+  Sink sink;
+  TextInputState input_state;
+  Surface surface;
+  Font font;
+  uint32_t bg, fg;
+  uint32_t x, y;
+  uint32_t line_spacing;
+  uint32_t buffer_pos;
+  char command_buffer[256];
+} Console;
+
+void clear_console(Console *c);
+void push_console_input_event(Console *c, InputEvent event);
+
 const uint32_t WHITE = 0xFFFFFFFF;
 const uint32_t BLACK = bswap32(0x000000FF);
 const uint32_t RED = bswap32(0xFF0000FF);
@@ -53,6 +69,7 @@ const uint32_t GREEN = bswap32(0x00FF00FF);
 
 void draw_char(Surface *surface, int x, int y, uint32_t color, uint8_t character);
 void draw_char2(Surface *surface, Font *font, int x, int y, uint32_t color, uint8_t character);
+void draw_char3(Surface *surface, Font *font, int x, int y, uint32_t fg, uint32_t bg, uint8_t character);
 // Draws until limit or null byte
 void draw_line(Surface *surface, int x, int y, uint32_t color, const char *str, uint32_t limit);
 void fill_surface(Surface *surface, uint32_t color);

@@ -13,6 +13,7 @@
 #include "apic.c"
 #include "pci.c"
 #include "text_input.c"
+#include "console.c"
 
 INCLUDE_ASM("utils.s");
 
@@ -76,9 +77,21 @@ void _start(BootData *data) {
 
   ASM("sti");
 
-  TextInputState text_input = {0};
-
   uint32_t scancode_processed = 0;
+
+  fill_surface(&data->fb, 0x11111111);
+
+  Console console = {
+    .sink.write = console_write,
+    .font = data->font,
+    .surface = data->fb,
+    .line_spacing = 4,
+    .bg = 0x11111111,
+    .fg = WHITE,
+  };
+  LOG_SINK = &QEMU_DEBUGCON_SINK;
+
+  clear_console(&console);
 
   // SOURCE: https://wiki.osdev.org/PS/2_Keyboard
   for(;;) {
@@ -98,8 +111,7 @@ void _start(BootData *data) {
         .value = released ? 0 : 1,
       };
 
-      char ch = push_input_event(&text_input, event);
-      if (ch) prints(LOG_SINK, "%c", ch);
+      push_console_input_event(&console, event);
     }
   }
 }
