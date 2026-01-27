@@ -8,13 +8,19 @@ typedef size_t paddr_t;
 typedef size_t vaddr_t;
 
 typedef enum {
-  IS_CAPSLOCK = 1 << 0,
-  IS_LSHIFT = 1 << 1,
-  IS_RSHIFT = 1 << 2,
+  MOD_CAPSLOCK = 1 << 0,
+  MOD_LSHIFT = 1 << 1,
+  MOD_RSHIFT = 1 << 2,
+  MOD_LCTRL = 1 << 3,
+  MOD_RCTRL = 1 << 4,
+  MOD_LALT = 1 << 5,
+  MOD_RALT = 1 << 6,
+  MOD_LSUPER = 1 << 7,
+  MOD_RSUPER = 1 << 8,
 } TextInputFlags;
 
 typedef struct {
-  uint32_t flags;
+  uint32_t modifiers;
 } TextInputState;
 
 extern char PSF_FONT_START[];
@@ -55,6 +61,7 @@ typedef struct {
   uint32_t x, y;
   uint32_t line_spacing;
   uint32_t buffer_pos;
+  uint32_t flags;
   char command_buffer[256];
 } Console;
 

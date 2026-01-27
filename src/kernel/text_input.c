@@ -57,22 +57,39 @@ char push_input_event(TextInputState *state, InputEvent event) {
 
   switch (event.code) {
     case KEY_CAPSLOCK: {
-      if (event.value == 1) state->flags ^= IS_CAPSLOCK;
+      if (event.value == 1) state->modifiers ^= MOD_CAPSLOCK;
     } return 0;
     case KEY_LEFTSHIFT: {
-      state->flags &= ~IS_LSHIFT;
-      state->flags |= (event.value & 1) << 1;
+      state->modifiers &= ~MOD_LSHIFT;
+      state->modifiers |= (event.value & 1) << 1;
     } return 0;
     case KEY_RIGHTSHIFT: {
-      state->flags &= ~IS_RSHIFT;
-      state->flags |= (event.value & 1) << 2;
+      state->modifiers &= ~MOD_RSHIFT;
+      state->modifiers |= (event.value & 1) << 2;
     } return 0;
+    case KEY_LEFTCTRL: {
+      state->modifiers &= ~MOD_LCTRL;
+      state->modifiers |= (event.value & 1) << 3;
+    } return 0;
+    case KEY_RIGHTCTRL: {
+      state->modifiers &= ~MOD_RCTRL;
+      state->modifiers |= (event.value & 1) << 4;
+    } return 0;
+    case KEY_LEFTALT: {
+      state->modifiers &= ~MOD_LALT;
+      state->modifiers |= (event.value & 1) << 5;
+    } return 0;
+    case KEY_RIGHTALT: {
+      state->modifiers &= ~MOD_RALT;
+      state->modifiers |= (event.value & 1) << 6;
+    } return 0;
+    // TODO: Add super keys
     default: break;
   }
   if (event.code > 128 || event.value != 1) return 0;
 
-  bool is_shift = (state->flags & IS_LSHIFT) || (state->flags & IS_RSHIFT);
-  bool is_caps = (state->flags & IS_CAPSLOCK);
+  bool is_shift = (state->modifiers & MOD_LSHIFT) || (state->modifiers & MOD_RSHIFT);
+  bool is_caps = (state->modifiers & MOD_CAPSLOCK);
   if ((is_shift || is_caps) && is_shift != is_caps) {
     return SHIFT_LAYER[event.code];
   } else {

@@ -32,18 +32,45 @@ Error console_write(void *data, const void *buffer, uint32_t limit) {
 }
 
 void clear_console(Console *c) {
+  // TODO: Clear only damaged areas
+  c->x = 0;
+  c->y = 0;
   fill_surface(&c->surface, c->bg);
-  console_write_char(c, '>');
-  console_write_char(c, ' ');
+  prints(&c->sink, "> ");
   draw_char3(&c->surface, &c->font, c->x, c->y, c->fg, c->bg, '_');
 }
 
+enum {
+  KEY_RELEASED = 0,
+  KEY_PRESSED = 1,
+};
+
 void push_console_input_event(Console *c, InputEvent event) {
-  if (event.type != EV_KEY || !event.value) return;
-  // TODO: Add simple shortcuts: clear screen, clear command line, etc.
+  if (event.type != EV_KEY) return;
+
+  bool is_ctrl = (c->input_state.modifiers & MOD_LCTRL) || (c->input_state.modifiers & MOD_RCTRL);
+  if (event.value == KEY_PRESSED && is_ctrl) {
+    switch (event.code) {
+      case KEY_C: {
+        c->buffer_pos = 0;
+        draw_char3(&c->surface, &c->font, c->x, c->y, c->fg, c->bg, ' ');
+        c->x = 0;
+        c->y += c->font.height;
+        prints(&c->sink, "> ");
+      } return;
+      case KEY_L: {
+        clear_console(c);
+        for (uint32_t i = 0; i < c->buffer_pos; ++i) {
+          console_write_char(c, c->command_buffer[i]);
+        }
+      } return;
+      default: break;
+    }
+  }
 
   switch (event.code) {
     case KEY_ENTER: {
+      if (event.value != KEY_RELEASED) break;
       draw_char3(&c->surface, &c->font, c->x, c->y, c->fg, c->bg, ' ');
       c->x = 0;
       c->y += c->font.height;
@@ -59,7 +86,7 @@ void push_console_input_event(Console *c, InputEvent event) {
       prints(&c->sink, "> ");
     } break;
     case KEY_BACKSPACE: {
-      if (c->buffer_pos == 0) break;
+      if (c->buffer_pos == 0 || event.value != KEY_PRESSED) break;
       c->buffer_pos--;
       draw_char3(&c->surface, &c->font, c->x, c->y, c->fg, c->bg, ' ');
       if (c->x > c->font.width) {
