@@ -127,6 +127,7 @@ ALIGNED(PAGE_SIZE) PageTable PML4;
 typedef struct {
   size_t kernel_sp;
   size_t user_sp;
+  Sink *user_log_sink;
 } KernelThreadContext;
 
 NORETURN void user_main(void);

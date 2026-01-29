@@ -14,8 +14,14 @@ typedef struct PACKED {
   size_t r11; // flags
 } SyscallFrame;
 
+#define MSR_GS_BAS 0xC0000101ull
+
 SYSV size_t handle_syscall(SyscallFrame *frame) {
-  // TODO: Getting kernel thread context
+  size_t high, thread_context_addr;
+  READ_MSR(MSR_GS_BAS, thread_context_addr, high);
+  thread_context_addr |= high << 32;
+  KernelThreadContext *ctx = (void *)thread_context_addr;
+
   switch (frame->rax) {
     case SYS_LOG: {
       const char *str = (void *)frame->rdi;
@@ -25,7 +31,7 @@ SYSV size_t handle_syscall(SyscallFrame *frame) {
         frame->rax = SYS_ERR_BAD_ARG;
         return 0;
       }
-      prints(LOG_SINK, "[USER]%S", limit, str);
+      prints(ctx->user_log_sink, "[USER]%S", limit, str);
     } break;
     case SYS_EXIT: {
       frame->rax = frame->rdi;

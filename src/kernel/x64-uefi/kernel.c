@@ -54,7 +54,9 @@ void _start(BootData *data) {
   write_ioapic_register(data->io_apic_addr, keyboard_reg, 0xF1);
   write_ioapic_register(data->io_apic_addr, keyboard_reg + 1, (size_t)lapic_id >> 56);
 
-  KernelThreadContext thread_context = {0};
+  KernelThreadContext thread_context = {
+    .user_log_sink = &QEMU_DEBUGCON_SINK,
+  };
   enable_system_calls(&thread_context);
 
   vaddr_t user_entry;
@@ -90,6 +92,7 @@ void _start(BootData *data) {
     .fg = WHITE,
   };
   LOG_SINK = &console.sink;
+  thread_context.user_log_sink = &console.sink;
 
   clear_console(&console);
 

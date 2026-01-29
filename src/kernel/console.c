@@ -31,13 +31,36 @@ Error console_write(void *data, const void *buffer, uint32_t limit) {
   return OK;
 }
 
+void print_console_prompt(Console *c) {
+  uint32_t fg = c->fg;
+  c->fg = GREEN;
+  prints(&c->sink, "?> ");
+  c->fg = fg;
+}
+
+void draw_cursor(Console *c) {
+  uint32_t y_end = UPPER_BOUND(c->y + c->font.height, c->surface.height);
+  for (uint32_t y = c->y; y < y_end; ++y) {
+    uint32_t *pixel = (uint32_t *)((uint8_t *)c->surface.ptr + c->surface.pitch * y + (c->x ) * 4);
+    *pixel = GREEN;
+  }
+}
+
+void clear_cursor(Console *c) {
+  uint32_t y_end = UPPER_BOUND(c->y + c->font.height, c->surface.height);
+  for (uint32_t y = c->y; y < y_end; ++y) {
+    uint32_t *pixel = (uint32_t *)((uint8_t *)c->surface.ptr + c->surface.pitch * y + (c->x ) * 4);
+    *pixel = c->bg;
+  }
+}
+
 void clear_console(Console *c) {
   // TODO: Clear only damaged areas
   c->x = 0;
   c->y = 0;
   fill_surface(&c->surface, c->bg);
-  prints(&c->sink, "> ");
-  draw_char3(&c->surface, &c->font, c->x, c->y, c->fg, c->bg, '_');
+  print_console_prompt(c);
+  draw_cursor(c);
 }
 
 enum {
@@ -71,10 +94,10 @@ void push_console_input_event(Console *c, InputEvent event) {
     switch (event.code) {
       case KEY_C: {
         c->buffer_pos = 0;
-        draw_char3(&c->surface, &c->font, c->x, c->y, c->fg, c->bg, ' ');
+        clear_cursor(c);
         c->x = 0;
         c->y += c->font.height;
-        prints(&c->sink, "> ");
+        print_console_prompt(c);
       } return;
       case KEY_L: {
         clear_console(c);
@@ -89,24 +112,24 @@ void push_console_input_event(Console *c, InputEvent event) {
   switch (event.code) {
     case KEY_ENTER: {
       if (event.value != KEY_RELEASED) break;
-      draw_char3(&c->surface, &c->font, c->x, c->y, c->fg, c->bg, ' ');
+      clear_cursor(c);
       c->x = 0;
       c->y += c->font.height;
       process_console_command(c);
       c->buffer_pos = 0;
-      prints(&c->sink, "> ");
+      print_console_prompt(c);
     } break;
     case KEY_BACKSPACE: {
       if (c->buffer_pos == 0 || event.value != KEY_PRESSED) break;
       c->buffer_pos--;
-      draw_char3(&c->surface, &c->font, c->x, c->y, c->fg, c->bg, ' ');
+      clear_cursor(c);
       if (c->x > c->font.width) {
         c->x -= c->font.width;
       } else if (c->y > c->font.height + c->line_spacing) {
         c->x = 0;
         c->y -= c->font.height + c->line_spacing;
       }
-      draw_char3(&c->surface, &c->font, c->x, c->y, c->fg, c->bg, '_');
+      draw_char3(&c->surface, &c->font, c->x, c->y, c->fg, c->bg, ' ');
     } break;
     default: {
       char ch = push_input_event(&c->input_state, event);
@@ -116,5 +139,5 @@ void push_console_input_event(Console *c, InputEvent event) {
       }
     } break;
   }
-  draw_char3(&c->surface, &c->font, c->x, c->y, c->fg, c->bg, '_');
+  draw_cursor(c);
 }

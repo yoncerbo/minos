@@ -52,6 +52,11 @@ typedef struct {
   uint8_t *glyphs;
 } Font;
 
+typedef enum {
+  CONSOLE_MODE_OUTPTUT,
+  CONSOLE_MODE_COMMAND,
+} ConsoleMode;
+
 typedef struct {
   Sink sink;
   TextInputState input_state;
@@ -62,6 +67,7 @@ typedef struct {
   uint32_t line_spacing;
   uint32_t buffer_pos;
   uint32_t flags;
+  ConsoleMode mode;
   char command_buffer[256];
 } Console;
 
