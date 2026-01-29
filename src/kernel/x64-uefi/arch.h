@@ -257,8 +257,7 @@ uint32_t setup_apic(MemoryManager *mm);
 volatile uint32_t *get_apic_regs(void);
 uint32_t read_ioapic_register(size_t io_apic_addr, size_t register_select);
 void write_ioapic_register(size_t io_apic_addr, size_t register_select, uint32_t value);
-
-void discover_pci_devices(PageAllocator2 *alloc, PageTable *pml4);
+void discover_pci_devices(MemoryManager *mm);
 
 #define SCANCODE_BUFFER_SIZE 128
 uint8_t SCANCODE_BUFFER[SCANCODE_BUFFER_SIZE];

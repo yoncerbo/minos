@@ -58,7 +58,7 @@ uint32_t pack_pci_id(uint8_t bus, uint8_t device, uint8_t function) {
 // TODO: Check in the efi to see if the PCI bus protocol exists
 // TODO: Switch to PCI express and MMIO
 
-void check_pci_device(uint8_t bus, uint8_t device, PageAllocator2 *alloc, PageTable *pml4) {
+void check_pci_device(uint8_t bus, uint8_t device, MemoryManager *mm) {
   uint32_t id = pack_pci_id(bus, device, 0);
   uint16_t vendor_id = read_pci_register16(id, PCI_CONFIG_VENDOR_ID);
   if (vendor_id == 0xFFFF) return;
@@ -132,9 +132,9 @@ void check_pci_device(uint8_t bus, uint8_t device, PageAllocator2 *alloc, PageTa
 
         // TODO: Rework the interface, use the invalidate instruction
         ASSERT(cap.config_len <= PAGE_SIZE);
-        map_pages(alloc, pml4, config_addr, config_addr, cap.config_len,
-           PAGE_BIT_PRESENT | PAGE_BIT_WRITABLE | PAGE_BIT_USER);
-        ASM("mov cr3, %0" :: "r"((size_t)pml4 & PAGE_ADDR_MASK));
+        map_virtual_range(mm, config_addr, config_addr, cap.config_len,
+            PAGE_BIT_PRESENT | PAGE_BIT_WRITABLE | PAGE_BIT_USER);
+        flush_page_table(mm);
 
         struct {
           uint32_t device_feature_select;
@@ -160,10 +160,10 @@ void check_pci_device(uint8_t bus, uint8_t device, PageAllocator2 *alloc, PageTa
   }
 }
 
-void discover_pci_devices(PageAllocator2 *alloc, PageTable *pml4) {
+void discover_pci_devices(MemoryManager *mm) {
   for (uint32_t bus = 0; bus < 256; ++bus) {
     for (uint32_t dev = 0; dev < 32; ++dev) {
-      check_pci_device(bus, dev, alloc, pml4);
+      check_pci_device(bus, dev, mm);
     }
   }
 }

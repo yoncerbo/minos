@@ -55,11 +55,12 @@ void _start(BootData *data) {
   uint32_t lapic_id = setup_apic(&mm);
   DEBUGD(lapic_id);
 
-  discover_pci_devices(&data->alloc, data->pml4);
+  discover_pci_devices(&mm);
 
-  map_page(&data->alloc, data->pml4, data->io_apic_addr, data->io_apic_addr,
+  map_virtual_range(&mm, data->io_apic_addr, data->io_apic_addr, PAGE_SIZE,
       PAGE_BIT_PRESENT | PAGE_BIT_WRITABLE);
-  ASM("mov cr3, %0" :: "r"((size_t)data->pml4 & PAGE_ADDR_MASK));
+  flush_page_table(&mm);
+
   uint32_t ioapic_ver = read_ioapic_register(data->io_apic_addr, IO_APIC_VER);
   size_t input_count = ((ioapic_ver >> 16) & 0xFF) + 1;
   DEBUGD(input_count);
@@ -79,10 +80,9 @@ void _start(BootData *data) {
   paddr_t user_stack = alloc_pages2(&data->alloc, 4);
   paddr_t user_stack_top = user_stack + 4 * PAGE_SIZE - 1;
 
-  map_pages(&data->alloc, data->pml4, user_stack, user_stack, PAGE_SIZE * 4,
+  map_virtual_range(&mm, user_stack, user_stack, 4 * PAGE_SIZE,
       PAGE_BIT_PRESENT | PAGE_BIT_WRITABLE | PAGE_BIT_USER);
-
-  ASM("mov cr3, %0" :: "r"((size_t)data->pml4 & PAGE_ADDR_MASK));
+  flush_page_table(&mm);
 
   log("Running user program");
   console.fg = 0x00ff00ff;
