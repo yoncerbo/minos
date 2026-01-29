@@ -131,3 +131,40 @@ paddr_t alloc_pages2(PageAllocator2 *alloc, size_t page_count) {
   log("Failed to allocate %d physical pages", page_count);
   ASSERT(0);
 }
+
+uint32_t push_virtual_object(MemoryManager *mm, VirtualObject obj) {
+  ASSERT(mm->objects_count < MAX_VIRTUAL_OBJECTS);
+  uint32_t index = mm->objects_count++;
+  mm->objects[index] = obj;
+  return index;
+}
+
+void map_virtual_range(MemoryManager *mm, vaddr_t virtual, paddr_t physical, size_t size, size_t flags) {
+  ASSERT(virtual >= mm->start);
+  ASSERT(virtual + size <= mm->end);
+
+  uint32_t *obj_index = &mm->first_object;
+
+  while (*obj_index) {
+    VirtualObject *obj = &mm->objects[*obj_index];
+    vaddr_t new_end = virtual + size;
+    if (new_end <= obj->virtual) break;
+    ASSERT(virtual >= obj->virtual + obj->size);
+    obj_index = &obj->next;
+  }
+
+  VirtualObject obj = {virtual, physical, size, *obj_index};
+  uint32_t index = push_virtual_object(mm, obj);
+  *obj_index = index;
+  map_pages(mm->page_alloc, mm->pml4, physical, virtual, size, flags);
+}
+
+void flush_page_table(MemoryManager *mm) {
+  ASM("mov cr3, %0" :: "r"((size_t)mm->pml4 & PAGE_ADDR_MASK));
+}
+
+void alloc_virtual(MemoryManager *mm, vaddr_t virtual, size_t size, size_t flags) {
+  if (!size) return;
+  paddr_t physical = alloc_pages2(mm->page_alloc, (size + PAGE_SIZE - 1) / PAGE_SIZE);
+  map_virtual_range(mm, virtual, physical, size, flags);
+}

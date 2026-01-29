@@ -39,10 +39,20 @@ void _start(BootData *data) {
   clear_console(&console);
   LOG_SINK = &console.sink;
 
+  MemoryManager mm = {
+    .start = 0,
+    .end = 0xFFFFFFFFFFFFFFFF,
+    .page_alloc = &data->alloc,
+    .first_object = 0,
+    .objects_count = 1, // NOTE: first object is null
+    .pml4 = data->pml4,
+    .virtual_offset = 0,
+  };
+
   setup_gdt_and_tss((GdtEntry *)GDT, &TSS, &INTERUPT_STACK[sizeof(INTERUPT_STACK) - 1]);
   setup_idt(IDT);
 
-  uint32_t lapic_id = setup_apic(&data->alloc, data->pml4);
+  uint32_t lapic_id = setup_apic(&mm);
   DEBUGD(lapic_id);
 
   discover_pci_devices(&data->alloc, data->pml4);

@@ -193,6 +193,30 @@ typedef struct {
 void push_free_pages(PageAllocator2 *alloc, size_t physical_start, size_t page_count);
 paddr_t alloc_pages2(PageAllocator2 *alloc, size_t page_count);
 
+typedef struct {
+  vaddr_t virtual;
+  paddr_t physical;
+  size_t size;
+  uint32_t next;
+} VirtualObject;
+
+#define MAX_VIRTUAL_OBJECTS 256
+
+typedef struct {
+  PageAllocator2 *page_alloc;
+  PageTable *pml4;
+  size_t virtual_offset;
+  vaddr_t start;
+  vaddr_t end;
+  VirtualObject objects[MAX_VIRTUAL_OBJECTS];
+  uint32_t objects_count;
+  uint32_t first_object;
+} MemoryManager;
+
+void map_virtual_range(MemoryManager *mm, vaddr_t virtual, paddr_t physical, size_t size, size_t flags);
+void flush_page_table(MemoryManager *mm);
+void alloc_virtual(MemoryManager *mm, vaddr_t virtual, size_t size, size_t flags);
+
 ALIGNED(16) InterruptDescriptor IDT[256] = {0};
 Tss TSS;
 
@@ -229,7 +253,7 @@ enum {
   IO_APIC_REDTBL = 3,
 };
 
-uint32_t setup_apic(PageAllocator2 *alloc, PageTable *pml4);
+uint32_t setup_apic(MemoryManager *mm);
 volatile uint32_t *get_apic_regs(void);
 uint32_t read_ioapic_register(size_t io_apic_addr, size_t register_select);
 void write_ioapic_register(size_t io_apic_addr, size_t register_select, uint32_t value);
@@ -239,6 +263,5 @@ void discover_pci_devices(PageAllocator2 *alloc, PageTable *pml4);
 #define SCANCODE_BUFFER_SIZE 128
 uint8_t SCANCODE_BUFFER[SCANCODE_BUFFER_SIZE];
 uint32_t SCANCODE_POSITION = 0;
-
 
 #endif

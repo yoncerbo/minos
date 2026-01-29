@@ -43,7 +43,7 @@ void set_pit_periodic(uint16_t count) {
   WRITE_PORT(0x40, count >> 8);
 }
 
-uint32_t setup_apic(PageAllocator2 *alloc, PageTable *pml4) {
+uint32_t setup_apic(MemoryManager *mm) {
   // TODO: Make sure APIC is present using CPUID intruction
 
   WRITE_PORT(PIC_MASTER_DATA, 0xFF); // mask out all the interrupts
@@ -60,9 +60,9 @@ uint32_t setup_apic(PageAllocator2 *alloc, PageTable *pml4) {
   // TODO: map the address
   size_t apic_addr = low & 0xFFFFF000;
   DEBUGX(apic_addr);
-  map_pages(alloc, pml4, apic_addr, apic_addr, PAGE_SIZE * 4,
-      PAGE_BIT_WRITABLE | PAGE_BIT_PRESENT);
-  ASM("mov cr3, %0" :: "r"((size_t)pml4 & PAGE_ADDR_MASK));
+  map_virtual_range(mm, apic_addr, apic_addr, PAGE_SIZE * 4,
+      PAGE_BIT_PRESENT | PAGE_BIT_WRITABLE);
+  flush_page_table(mm);
   volatile uint32_t *apic_regs = (void *)apic_addr;
 
   apic_regs[APIC_SPURIOUS_VECTOR] = 0x1FF;
