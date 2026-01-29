@@ -7,7 +7,6 @@
 #include "interrupts.c"
 #include "gdt.c"
 #include "syscalls.c"
-#include "logging.c"
 #include "drawing.c"
 #include "elf.c"
 #include "apic.c"
@@ -29,14 +28,19 @@ uint8_t SCANCODE_TO_KEY[256] = {
 };
 
 void _start(BootData *data) {
-  LOG_SINK = &QEMU_DEBUGCON_SINK;
+  Console console = {
+    .sink.write = console_write,
+    .font = data->font,
+    .surface = data->fb,
+    .line_spacing = 4,
+    .bg = 0x11111111,
+    .fg = WHITE,
+  };
+  clear_console(&console);
+  LOG_SINK = &console.sink;
+
   setup_gdt_and_tss((GdtEntry *)GDT, &TSS, &INTERUPT_STACK[sizeof(INTERUPT_STACK) - 1]);
   setup_idt(IDT);
-
-  fill_surface(&data->fb, BLACK);
-  FB_SINK.surface = data->fb;
-  FB_SINK.font = data->font;
-  LOG_SINK = &FB_SINK.sink;
 
   uint32_t lapic_id = setup_apic(&data->alloc, data->pml4);
   DEBUGD(lapic_id);
@@ -55,7 +59,7 @@ void _start(BootData *data) {
   write_ioapic_register(data->io_apic_addr, keyboard_reg + 1, (size_t)lapic_id >> 56);
 
   KernelThreadContext thread_context = {
-    .user_log_sink = &QEMU_DEBUGCON_SINK,
+    .user_log_sink = &console.sink,
   };
   enable_system_calls(&thread_context);
 
@@ -71,30 +75,17 @@ void _start(BootData *data) {
   ASM("mov cr3, %0" :: "r"((size_t)data->pml4 & PAGE_ADDR_MASK));
 
   log("Running user program");
+  console.fg = 0x00ff00ff;
   size_t status;
   status = run_user_program((void *)user_entry, (void *)user_stack_top);
   DEBUGD(status);
-
-  log("OK");
+  console.fg = WHITE;
 
   ASM("sti");
 
   uint32_t scancode_processed = 0;
 
-  fill_surface(&data->fb, 0x11111111);
-
-  Console console = {
-    .sink.write = console_write,
-    .font = data->font,
-    .surface = data->fb,
-    .line_spacing = 4,
-    .bg = 0x11111111,
-    .fg = WHITE,
-  };
-  LOG_SINK = &console.sink;
-  thread_context.user_log_sink = &console.sink;
-
-  clear_console(&console);
+  draw_console_prompt(&console);
 
   // SOURCE: https://wiki.osdev.org/PS/2_Keyboard
   for(;;) {
@@ -114,7 +105,17 @@ void _start(BootData *data) {
         .value = released ? 0 : 1,
       };
 
-      push_console_input_event(&console, event);
+      if (!push_console_input_event(&console, event)) continue;
+
+      uint32_t len;
+      const char *cmd = strip_string(console.command_buffer, console.buffer_pos, &len);
+      if (len == 4 && are_strings_equal(cmd, "ping", 4)) {
+        prints(&console.sink, "pong\n");
+      } else {
+        prints(&console.sink, "Unknown command: '%S'\n", len, cmd);
+      }
+      console.buffer_pos = 0;
+      draw_console_prompt(&console);
     }
   }
 }

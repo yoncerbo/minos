@@ -31,7 +31,7 @@ SYSV size_t handle_syscall(SyscallFrame *frame) {
         frame->rax = SYS_ERR_BAD_ARG;
         return 0;
       }
-      prints(ctx->user_log_sink, "[USER]%S", limit, str);
+      prints(ctx->user_log_sink, "%S", limit, str);
     } break;
     case SYS_EXIT: {
       frame->rax = frame->rdi;

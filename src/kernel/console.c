@@ -59,6 +59,11 @@ void clear_console(Console *c) {
   c->x = 0;
   c->y = 0;
   fill_surface(&c->surface, c->bg);
+  // print_console_prompt(c);
+  // draw_cursor(c);
+}
+
+void draw_console_prompt(Console *c) {
   print_console_prompt(c);
   draw_cursor(c);
 }
@@ -68,26 +73,8 @@ enum {
   KEY_PRESSED = 1,
 };
 
-void process_console_command(Console *c) {
-  uint32_t start;
-  for (start = 0; start < c->buffer_pos; ++start) {
-    if (c->command_buffer[start] != ' ') break;
-  }
-  uint32_t last;
-  for (last = c->buffer_pos - 1; last > start; --last) {
-    if (c->command_buffer[last] != ' ') break;
-  }
-  uint32_t len = last + 1 - start;
-
-  if (len == 4 && are_strings_equal("ping", &c->command_buffer[start], 4)) {
-    prints(&c->sink, "pong\n");
-  } else {
-    prints(&c->sink, "Unknown command: '%S'\n", len, &c->command_buffer[start]);
-  }
-}
-
-void push_console_input_event(Console *c, InputEvent event) {
-  if (event.type != EV_KEY) return;
+bool push_console_input_event(Console *c, InputEvent event) {
+  if (event.type != EV_KEY) return false;
 
   bool is_ctrl = (c->input_state.modifiers & MOD_LCTRL) || (c->input_state.modifiers & MOD_RCTRL);
   if (event.value == KEY_PRESSED && is_ctrl) {
@@ -98,13 +85,13 @@ void push_console_input_event(Console *c, InputEvent event) {
         c->x = 0;
         c->y += c->font.height;
         print_console_prompt(c);
-      } return;
+      } return false;
       case KEY_L: {
         clear_console(c);
         for (uint32_t i = 0; i < c->buffer_pos; ++i) {
           console_write_char(c, c->command_buffer[i]);
         }
-      } return;
+      } return false;
       default: break;
     }
   }
@@ -115,7 +102,8 @@ void push_console_input_event(Console *c, InputEvent event) {
       clear_cursor(c);
       c->x = 0;
       c->y += c->font.height;
-      process_console_command(c);
+      // process_console_command(c);
+      return true;
       c->buffer_pos = 0;
       print_console_prompt(c);
     } break;
@@ -140,4 +128,5 @@ void push_console_input_event(Console *c, InputEvent event) {
     } break;
   }
   draw_cursor(c);
+  return false;
 }

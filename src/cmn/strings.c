@@ -25,3 +25,11 @@ inline uint32_t __bswapsi2(uint32_t u) {
            (((u)&0x000000ff) << 24));
 }
 
+const char *strip_string(const char *str, uint32_t limit, uint32_t *out_len) {
+  uint32_t start = 0;
+  for (; start < limit && str[start] && str[start] == ' '; ++start);
+  uint32_t end = limit;
+  while (end && str[--end] == ' ');
+  *out_len = end - start + 1;
+  return &str[start];
+}

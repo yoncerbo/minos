@@ -72,7 +72,7 @@ typedef struct {
 } Console;
 
 void clear_console(Console *c);
-void push_console_input_event(Console *c, InputEvent event);
+bool push_console_input_event(Console *c, InputEvent event);
 
 const uint32_t WHITE = 0xFFFFFFFF;
 const uint32_t BLACK = bswap32(0x000000FF);

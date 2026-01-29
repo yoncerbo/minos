@@ -72,6 +72,7 @@ typedef struct {
 void *memcpy(void *restrict dest, const void *restrict src, size_t n);
 void *memset(void *s, int c, size_t n);
 bool are_strings_equal(const char *s1, const char *s2, size_t limit);
+const char *strip_string(const char *str, uint32_t limit, uint32_t *out_len);
 uint32_t __bswapsi2(uint32_t u);
 
 #define DEBUGD(var) \
