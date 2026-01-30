@@ -77,11 +77,8 @@ void _start(BootData *data) {
   vaddr_t user_entry;
   load_elf_file(&data->alloc, data->pml4, data->user_efi_file, &user_entry);
 
-  paddr_t user_stack = alloc_pages2(&data->alloc, 4);
-  paddr_t user_stack_top = user_stack + 4 * PAGE_SIZE - 1;
-
-  map_virtual_range(&mm, user_stack, user_stack, 4 * PAGE_SIZE,
-      PAGE_BIT_PRESENT | PAGE_BIT_WRITABLE | PAGE_BIT_USER);
+  uint8_t *user_stack = alloc(&mm, PAGE_SIZE * 4);
+  uint8_t *user_stack_top = user_stack + 4 * PAGE_SIZE - 1;
   flush_page_table(&mm);
 
   log("Running user program");

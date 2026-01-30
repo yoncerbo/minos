@@ -215,7 +215,9 @@ typedef struct {
 
 void map_virtual_range(MemoryManager *mm, vaddr_t virtual, paddr_t physical, size_t size, size_t flags);
 void flush_page_table(MemoryManager *mm);
-void alloc_virtual(MemoryManager *mm, vaddr_t virtual, size_t size, size_t flags);
+void alloc_at(MemoryManager *mm, vaddr_t virtual, size_t size, size_t flags);
+void *alloc(MemoryManager *mm, size_t size);
+void free(MemoryManager *mm, vaddr_t virtual);
 
 ALIGNED(16) InterruptDescriptor IDT[256] = {0};
 Tss TSS;

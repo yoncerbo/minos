@@ -163,8 +163,42 @@ void flush_page_table(MemoryManager *mm) {
   ASM("mov cr3, %0" :: "r"((size_t)mm->pml4 & PAGE_ADDR_MASK));
 }
 
-void alloc_virtual(MemoryManager *mm, vaddr_t virtual, size_t size, size_t flags) {
+void alloc_at(MemoryManager *mm, vaddr_t virtual, size_t size, size_t flags) {
   if (!size) return;
   paddr_t physical = alloc_pages2(mm->page_alloc, (size + PAGE_SIZE - 1) / PAGE_SIZE);
   map_virtual_range(mm, virtual, physical, size, flags);
+}
+
+void *alloc(MemoryManager *mm, size_t size) {
+  if (size == 0) return (void *)0;
+  size_t start = mm->start;
+  uint32_t *obj_index = &mm->first_object;
+
+  while (*obj_index) {
+    VirtualObject *obj = &mm->objects[*obj_index];
+    vaddr_t new_end = start + size;
+    if (new_end <= obj->virtual) break;
+    start = obj->virtual + obj->size;
+    obj_index = &obj->next;
+  }
+
+  paddr_t physical = alloc_pages2(mm->page_alloc, (size + PAGE_SIZE - 1) / PAGE_SIZE);
+  VirtualObject obj = {start, physical, size, *obj_index};
+  uint32_t index = push_virtual_object(mm, obj);
+  *obj_index = index;
+  size_t flags = PAGE_BIT_PRESENT | PAGE_BIT_WRITABLE | PAGE_BIT_USER;
+  map_pages(mm->page_alloc, mm->pml4, physical, start, size, flags);
+  return (void *)start;
+}
+
+void free(MemoryManager *mm, vaddr_t virtual) {
+  uint32_t *obj_index = &mm->first_object;
+  while (*obj_index) {
+    VirtualObject *obj = &mm->objects[*obj_index];
+    if (obj->virtual == virtual) {
+      // TODO: Fre physical pages if it wasn't MMIO
+      // TODO: Keep a free list of available object slots
+    }
+  }
+  ASSERT(0 && "Virtual address not found");
 }
