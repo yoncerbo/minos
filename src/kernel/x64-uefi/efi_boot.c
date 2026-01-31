@@ -166,7 +166,7 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
 
   log("Booting up");
 
-  size_t page_count = 128;
+  size_t page_count = 1024;
   paddr_t pages_start;
 
   status = st->boot_services->allocate_pages(EFI_ALLOC_ANY_PAGES,
@@ -243,9 +243,6 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
   PageTable *pml4 = (void *)alloc_pages2(&alloc, 1);
   memset(pml4, 0, PAGE_SIZE);
 
-  map_pages(&alloc, pml4, pages_start, pages_start + HIGHER_HALF, page_count * PAGE_SIZE,
-      PAGE_BIT_WRITABLE | PAGE_BIT_PRESENT | PAGE_BIT_USER);
-
   map_pages(&alloc, pml4, (paddr_t)loaded_image->image_base, (vaddr_t)loaded_image->image_base,
       loaded_image->image_size, PAGE_BIT_WRITABLE | PAGE_BIT_PRESENT);
   data->bootloader_image_base = (paddr_t)loaded_image->image_base;
@@ -305,10 +302,11 @@ EFIAPI size_t efi_main(void *image_handle, EfiSystemTable *st) {
     EfiMemoryDescriptor *desc = (void *)(MEMORY_MAP + offset);
     // NOTE: We only handle one code section for now
     ASSERT(desc->type != EFI_LOADER_DATA);
-    if (desc->type == EFI_CONVENTIONAL_MEMORY ) {
-        // NOTE: We can't write to those areas before we set up our page tables
-        // desc->type == EFI_BOOT_SERVICES_CODE || desc->type == EFI_BOOT_SERVICES_DATA) {
+    if (desc->type == EFI_CONVENTIONAL_MEMORY | desc->type == EFI_BOOT_SERVICES_CODE |
+        desc->type == EFI_BOOT_SERVICES_DATA) {
       push_free_pages(&alloc, desc->physical_start, desc->number_of_pages);
+      map_pages(&alloc, pml4, desc->physical_start, desc->physical_start + virtual_offset,
+          desc->number_of_pages * PAGE_SIZE, PAGE_BIT_WRITABLE | PAGE_BIT_PRESENT);
     }
   }
 
