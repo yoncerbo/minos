@@ -130,12 +130,6 @@ void check_pci_device(uint8_t bus, uint8_t device, MemoryManager *mm) {
         uint64_t config_addr = ((next_bar << 32) | (bar_type & 0xFFFFFFF0)) + cap.config_offset;
         DEBUGX(config_addr);
 
-        // TODO: Rework the interface, use the invalidate instruction
-        ASSERT(cap.config_len <= PAGE_SIZE);
-        map_virtual_range(mm, config_addr, config_addr, cap.config_len,
-            PAGE_BIT_PRESENT | PAGE_BIT_WRITABLE | PAGE_BIT_USER);
-        flush_page_table(mm);
-
         struct {
           uint32_t device_feature_select;
           uint32_t device_feature;
@@ -154,7 +148,9 @@ void check_pci_device(uint8_t bus, uint8_t device, MemoryManager *mm) {
           uint64_t queue_desc;
           uint64_t queue_driver;
           uint64_t queue_device;
-        } *config = (void *)config_addr;
+        } *config = (void *)alloc_physical(mm, config_addr, cap.config_len,
+            PAGE_BIT_PRESENT | PAGE_BIT_WRITABLE);
+        flush_page_table(mm);
       }
     }
   }

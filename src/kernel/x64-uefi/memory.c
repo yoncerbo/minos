@@ -2,47 +2,6 @@
 #include "common.h"
 #include "arch.h"
 
-PageAllocator2 *GLOBAL_PAGE_ALLOCATOR = 0;
-
-// Returns zeroed page
-paddr_t alloc_pages(PageAllocator *allocator, size_t page_count) {
-  ASSERT(allocator->page_offset + page_count < allocator->page_count);
-  paddr_t addr = allocator->start + allocator->page_offset * PAGE_SIZE;
-  allocator->page_offset += page_count;
-  return addr;
-}
-
-void map_page_identity(PageAllocator *alloc, PageTable *level4_table, size_t addr, size_t flags) {
-  ASSERT(!(addr % PAGE_SIZE));
-
-  uint32_t page_table_indices[4] = {
-    (addr >> 39) % 512,
-    (addr >> 30) % 512,
-    (addr >> 21) % 512,
-    (addr >> 12) % 512,
-  };
-
-  flags |= PAGE_BIT_PRESENT;
-
-  PageTable *page_table = level4_table;
-  for (int i = 0; i < 3; ++i) {
-    uint32_t index = page_table_indices[i];
-    size_t entry = page_table->entries[index];
-    if (!(entry & PAGE_BIT_PRESENT)) {
-      size_t table_addr = alloc_pages(alloc, 1);
-      memset((void *)table_addr, 0, PAGE_SIZE);
-      page_table->entries[index] = (table_addr & PAGE_ADDR_MASK) | flags;
-      map_page_identity(alloc, level4_table, table_addr, PAGE_BIT_WRITABLE | PAGE_BIT_USER);
-    }
-    page_table = (void *)(page_table->entries[index] & PAGE_ADDR_MASK);
-  }
-
-  size_t entry = page_table->entries[page_table_indices[3]];
-  if (!(entry & PAGE_BIT_PRESENT)) {
-    page_table->entries[page_table_indices[3]] = (addr & PAGE_ADDR_MASK) | flags;
-  }
-}
-
 void map_page(PageAllocator2 *alloc, PageTable *pml4, paddr_t physical, vaddr_t virtual, size_t flags) {
   ASSERT(physical % PAGE_SIZE == 0);
   ASSERT(virtual % PAGE_SIZE == 0);
@@ -82,13 +41,41 @@ void map_pages(PageAllocator2 *alloc, PageTable *pml4, paddr_t physical_start, v
   }
 }
 
-void map_range_identity(PageAllocator *alloc, PageTable *level4_table,
-    size_t first_page_addr, size_t size_in_bytes, size_t flags) {
-  ASSERT(!(first_page_addr % PAGE_SIZE));
-  for (size_t addr = first_page_addr;
-      addr < first_page_addr + size_in_bytes;
-      addr += PAGE_SIZE) {
-    map_page_identity(alloc, level4_table, addr, flags);
+void map_page2(MemoryManager *mm, paddr_t physical, vaddr_t virtual, size_t flags) {
+  ASSERT(physical % PAGE_SIZE == 0);
+  ASSERT(virtual % PAGE_SIZE == 0);
+
+  uint32_t page_table_indices[4] = {
+    (virtual >> 39) % 512,
+    (virtual >> 30) % 512,
+    (virtual >> 21) % 512,
+    (virtual >> 12) % 512,
+  };
+
+  flags |= PAGE_BIT_PRESENT;
+
+  PageTable *page_table = (void *)(mm->pml4 + mm->virtual_offset);
+  for (int i = 0; i < 3; ++i) {
+    uint32_t index = page_table_indices[i];
+    size_t entry = page_table->entries[index];
+    if (!(entry & PAGE_BIT_PRESENT)) {
+      paddr_t table_physical = alloc_pages2(mm->page_alloc, 1);
+      vaddr_t table_addr = table_physical + mm->virtual_offset;
+      memset((void *)table_addr, 0, PAGE_SIZE);
+      page_table->entries[index] = (table_physical & PAGE_ADDR_MASK) | flags;
+    }
+    page_table = (void *)((page_table->entries[index] & PAGE_ADDR_MASK) + mm->virtual_offset);
+  }
+
+  size_t entry = page_table->entries[page_table_indices[3]];
+  if (!(entry & PAGE_BIT_PRESENT)) {
+    page_table->entries[page_table_indices[3]] = (physical & PAGE_ADDR_MASK) | flags;
+  }
+}
+void map_pages2(MemoryManager *mm, paddr_t physical, vaddr_t virtual, size_t size, size_t flags) {
+  paddr_t end = physical + size;
+  for (; physical < end; physical += PAGE_SIZE, virtual += PAGE_SIZE) {
+    map_page2(mm, physical, virtual, flags);
   }
 }
 
@@ -156,7 +143,8 @@ void map_virtual_range(MemoryManager *mm, vaddr_t virtual, paddr_t physical, siz
   VirtualObject obj = {virtual, physical, size, *obj_index};
   uint32_t index = push_virtual_object(mm, obj);
   *obj_index = index;
-  map_pages(mm->page_alloc, mm->pml4, physical, virtual, size, flags);
+  // map_pages(&mm->page_alloc, mm->pml4, physical, virtual, size, flags);
+  map_pages2(mm, physical, virtual, size, flags);
 }
 
 void flush_page_table(MemoryManager *mm) {
@@ -169,8 +157,8 @@ void alloc_at(MemoryManager *mm, vaddr_t virtual, size_t size, size_t flags) {
   map_virtual_range(mm, virtual, physical, size, flags);
 }
 
-void *alloc(MemoryManager *mm, size_t size) {
-  if (size == 0) return (void *)0;
+vaddr_t alloc_physical(MemoryManager *mm, paddr_t physical, size_t size, size_t flags) {
+  if (size == 0) return 0;
   size_t start = mm->start;
   uint32_t *obj_index = &mm->first_object;
 
@@ -182,13 +170,18 @@ void *alloc(MemoryManager *mm, size_t size) {
     obj_index = &obj->next;
   }
 
-  paddr_t physical = alloc_pages2(mm->page_alloc, (size + PAGE_SIZE - 1) / PAGE_SIZE);
   VirtualObject obj = {start, physical, size, *obj_index};
   uint32_t index = push_virtual_object(mm, obj);
   *obj_index = index;
-  size_t flags = PAGE_BIT_PRESENT | PAGE_BIT_WRITABLE | PAGE_BIT_USER;
-  map_pages(mm->page_alloc, mm->pml4, physical, start, size, flags);
-  return (void *)start;
+  // map_pages(&mm->page_alloc, mm->pml4, physical, start, size, flags);
+  map_pages2(mm, physical, start, size, flags);
+  return start;
+}
+
+void *alloc(MemoryManager *mm, size_t size) {
+  if (!size) return (void *)0;
+  paddr_t physical = alloc_pages2(mm->page_alloc, (size + PAGE_SIZE - 1) / PAGE_SIZE);
+  return (void *)alloc_physical(mm, physical, size, PAGE_BIT_PRESENT | PAGE_BIT_WRITABLE | PAGE_BIT_USER);
 }
 
 void free(MemoryManager *mm, vaddr_t virtual) {
@@ -202,3 +195,5 @@ void free(MemoryManager *mm, vaddr_t virtual) {
   }
   ASSERT(0 && "Virtual address not found");
 }
+
+// TODO: Add a function to change flags of an already mapped region or part of the region

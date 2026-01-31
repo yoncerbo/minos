@@ -71,9 +71,8 @@ SYSV IsrFrame *interrupt_handler(IsrFrame *frame) {
     } break;
     case 240: {
       // prints(LOG_SINK, ".");
-      volatile uint32_t *apic_regs = get_apic_regs();
-      apic_regs[APIC_TIMER_TICKS] = 1000000000;
-      apic_regs[APIC_END_OF_INTERRUPT] = 0;
+      APIC.regs[APIC_TIMER_TICKS] = 1000000000;
+      APIC.regs[APIC_END_OF_INTERRUPT] = 0;
       return frame;
     } break;
     case 241: {
@@ -82,8 +81,7 @@ SYSV IsrFrame *interrupt_handler(IsrFrame *frame) {
       if (scancode) {
         SCANCODE_BUFFER[SCANCODE_POSITION++ % SCANCODE_BUFFER_SIZE] = scancode;
       }
-      volatile uint32_t *apic_regs = get_apic_regs();
-      apic_regs[APIC_END_OF_INTERRUPT] = 0;
+      APIC.regs[APIC_END_OF_INTERRUPT] = 0;
       return frame;
     } break;
     default: {

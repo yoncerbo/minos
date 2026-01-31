@@ -7,6 +7,8 @@
 
 #define PAGE_SIZE 4096
 #define WFI() __asm__ __volatile__("hlt")
+#define HIGHER_HALF 0xFFFF800000000000ull
+#define KERNEL_BASE 0xFFFFFFFFFFF00000ull
 
 typedef struct PACKED {
   uint32_t reserved0;
@@ -99,7 +101,7 @@ typedef struct PACKED {
 #define PAGE_BIT_USER ((size_t)1 << 2)
 #define PAGE_BIT_NOT_EXECUTABLE ((size_t)1 << 63)
 
-#define PAGE_ADDR_MASK 0x000ffffffffff000ull
+#define PAGE_ADDR_MASK 0xfffffffffffff000ull
 
 size_t efi_setup(void *image_handle, EfiSystemTable *st, Surface *surface, uint8_t *memory_map, size_t *memory_map_size, size_t *memory_descriptor_size);
 
@@ -111,11 +113,6 @@ typedef struct {
   size_t page_offset;
   PageTable *pml4;
 } PageAllocator;
-
-paddr_t alloc_pages(PageAllocator *allocator, size_t page_count);
-void map_page_identity(PageAllocator *alloc, PageTable *level4_table, size_t addr, size_t flags);
-void map_range_identity(PageAllocator *alloc, PageTable *level4_table,
-    size_t first_page_addr, size_t size_in_bytes, size_t flags);
 
 SYSV extern void load_gdt_table(GdtPtr *gdt_table_ptr);
 SYSV extern void enable_system_calls(void *kernel_gs_base);
@@ -204,7 +201,7 @@ typedef struct {
 
 typedef struct {
   PageAllocator2 *page_alloc;
-  PageTable *pml4;
+  paddr_t pml4;
   size_t virtual_offset;
   vaddr_t start;
   vaddr_t end;
@@ -218,6 +215,9 @@ void flush_page_table(MemoryManager *mm);
 void alloc_at(MemoryManager *mm, vaddr_t virtual, size_t size, size_t flags);
 void *alloc(MemoryManager *mm, size_t size);
 void free(MemoryManager *mm, vaddr_t virtual);
+void map_pages2(MemoryManager *mm, paddr_t physical, vaddr_t virtual, size_t size, size_t flags);
+void push_free_pages(PageAllocator2 *alloc, paddr_t physical_start, size_t page_count);
+vaddr_t alloc_physical(MemoryManager *mm, paddr_t physical, size_t size, size_t flags);
 
 ALIGNED(16) InterruptDescriptor IDT[256] = {0};
 Tss TSS;
@@ -225,16 +225,13 @@ Tss TSS;
 void setup_gdt_and_tss(GdtEntry gdt[GDT_COUNT], Tss *tss, void *interrupt_stack_top);
 
 typedef struct {
-  GdtEntry gdt[GDT_COUNT];
-  Tss tss;
-  ALIGNED(16) InterruptDescriptor idt[256];
-  PageTable *pml4;
-  PageAllocator2 alloc;
+  paddr_t pml4;
+  PhysicalPageRange *ranges;
+  uint32_t ranges_len;
   Surface fb;
-  Font font;
-  uint8_t *user_efi_file;
   size_t io_apic_addr;
-  uint32_t pit_interrupt;
+  paddr_t bootloader_image_base;
+  size_t bootloader_image_size;
 } BootData;
 
 void validate_elf_header(ElfHeader64 *elf);
@@ -255,7 +252,14 @@ enum {
   IO_APIC_REDTBL = 3,
 };
 
-uint32_t setup_apic(MemoryManager *mm);
+typedef struct {
+  volatile uint32_t *regs;
+  uint32_t id;
+} Apic;
+
+Apic APIC = {0};
+
+void setup_apic(MemoryManager *mm, Apic *out_apic);
 volatile uint32_t *get_apic_regs(void);
 uint32_t read_ioapic_register(size_t io_apic_addr, size_t register_select);
 void write_ioapic_register(size_t io_apic_addr, size_t register_select, uint32_t value);

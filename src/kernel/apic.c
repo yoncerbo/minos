@@ -43,7 +43,7 @@ void set_pit_periodic(uint16_t count) {
   WRITE_PORT(0x40, count >> 8);
 }
 
-uint32_t setup_apic(MemoryManager *mm) {
+void setup_apic(MemoryManager *mm, Apic *out_apic) {
   // TODO: Make sure APIC is present using CPUID intruction
 
   WRITE_PORT(PIC_MASTER_DATA, 0xFF); // mask out all the interrupts
@@ -58,26 +58,19 @@ uint32_t setup_apic(MemoryManager *mm) {
   ASSERT(low & (1 << 11)); // APIC global enable
 
   // TODO: map the address
-  size_t apic_addr = low & 0xFFFFF000;
+  paddr_t apic_addr = low & 0xFFFFF000;
   DEBUGX(apic_addr);
-  map_virtual_range(mm, apic_addr, apic_addr, PAGE_SIZE * 4,
+
+  volatile uint32_t *apic_regs = (void *)alloc_physical(mm, apic_addr, PAGE_SIZE * 4,
       PAGE_BIT_PRESENT | PAGE_BIT_WRITABLE);
   flush_page_table(mm);
-  volatile uint32_t *apic_regs = (void *)apic_addr;
+  out_apic->regs = apic_regs;
+  out_apic->id = apic_regs[APIC_LOCAL_ID];
 
   apic_regs[APIC_SPURIOUS_VECTOR] = 0x1FF;
 
   apic_regs[APIC_LVT] = 0xF0;
   apic_regs[APIC_TIMER_TICKS] = 0;
-
-  return apic_regs[APIC_LOCAL_ID];
-}
-
-volatile uint32_t *get_apic_regs(void) {
-  uint32_t low, high;
-  READ_MSR(MSR_APIC_BASE, low, high);
-  size_t apic_addr = low & 0xFFFFF000;
-  return (void *)apic_addr;
 }
 
 uint32_t read_ioapic_register(size_t io_apic_addr, size_t register_select) {
