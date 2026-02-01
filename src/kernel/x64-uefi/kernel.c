@@ -18,9 +18,10 @@
 
 INCLUDE_ASM("utils.s");
 
-extern char FONT_FILE[], USER_FILE[];
+extern char FONT_FILE[], USER_FILE1[], USER_FILE2[];
 __asm__("FONT_FILE: .incbin \"res/font1.psf\"");
-__asm__("USER_FILE: .incbin \"out/x64-uefi/user_main.elf\"");
+__asm__("USER_FILE1: .incbin \"out/x64-uefi/user_main1.elf\"");
+__asm__("USER_FILE2: .incbin \"out/x64-uefi/user_main2.elf\"");
 
 Tss TSS;
 GdtEntry GDT[GDT_COUNT];
@@ -54,9 +55,7 @@ Error colored_write(void *data, const void *buffer, uint32_t limit) {
 void _start(BootData *data) {
   LOG_SINK = &QEMU_DEBUGCON_SINK;
 
-  KernelThreadContext ctx = {
-    .user_log_sink = &QEMU_DEBUGCON_SINK,
-  };
+  KernelThreadContext ctx = {0};
 
   // TODO: Allocate interrupt stack per thread
   uint8_t *int_stack_end = &INTERUPT_STACK[sizeof(INTERUPT_STACK) - 8];
@@ -142,23 +141,29 @@ void _start(BootData *data) {
   write_ioapic_register(io_apic, keyboard_reg + 1, (size_t)APIC.id >> 56);
 
   enable_system_calls(&ctx);
-  ColoredConsoleSink user_sink = {
+  ColoredConsoleSink user_sink1 = {
     .sink.write = colored_write,
     .console = &console,
     .fg = 0x00ff00ff,
     .bg = 0x11111111,
   };
-  ctx.user_log_sink = &user_sink.sink;
+  ColoredConsoleSink user_sink2 = {
+    .sink.write = colored_write,
+    .console = &console,
+    .fg = 0x00ff0000,
+    .bg = 0x11111111,
+  };
 
-  Process p = {0};
-  load_user_process(&p, &mm, USER_FILE);
+  Process p1;
+  load_user_process(&p1, &mm, USER_FILE1);
+  p1.log_sink = &user_sink1.sink;
+  Process p2;
+  load_user_process(&p2, &mm, USER_FILE2);
+  p2.log_sink = &user_sink2.sink;
 
-  log("Running user process");
-  ctx.user_sp = p.sp;
-  ctx.user_process = &p;
-
-  for (int i = 0; i < 2; ++i) {
-    run_user_process();
+  for (int i = 0; i < 5; ++i) {
+    run_user_process(&ctx, &p1);
+    run_user_process(&ctx, &p2);
     log("Back in kernel");
   }
 

@@ -125,7 +125,6 @@ struct Process;
 typedef struct {
   size_t kernel_sp;
   size_t user_sp;
-  Sink *user_log_sink;
   struct Process *user_process;
   size_t user_exit_code;
 } KernelThreadContext;
@@ -300,6 +299,7 @@ typedef struct Process {
   size_t sp;
   MemoryManager mm;
   struct Process *next;
+  Sink *log_sink;
 } Process;
 
 void load_user_process(Process *p, MemoryManager *kernel_mm, const char *elf_file);

@@ -41,7 +41,9 @@ build() {
         -o $OUT/kernel.elf $DIR/main.c $DIR/boot.s
       ;;
     "x64-uefi")
-      $CC $CFLAGS $USR/main.c -o $OUT/user_main.elf -DARCH_X64 \
+      $CC $CFLAGS $USR/main1.c -o $OUT/user_main1.elf -DARCH_X64 \
+        -I ./src/user/
+      $CC $CFLAGS $USR/main2.c -o $OUT/user_main2.elf -DARCH_X64 \
         -I ./src/user/
 
       $CC $CFLAGS $DIR/kernel.c -o $OUT/kernel.elf -DARCH_X64 \
