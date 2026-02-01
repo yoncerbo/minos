@@ -24,7 +24,7 @@ CLANG_UEFI_FLAGS="-target x86_64-pc-win32-coff
   -Wl,-subsystem:efi_application
   -Wl,/base:0
   -fuse-ld=lld-link
-  -g
+  -gdwarf
 "
   # -gdwarf
 
@@ -41,12 +41,12 @@ build() {
         -o $OUT/kernel.elf $DIR/main.c $DIR/boot.s
       ;;
     "x64-uefi")
+      $CC $CFLAGS $USR/main.c -o $OUT/user_main.elf -DARCH_X64 \
+        -I ./src/user/
+
       $CC $CFLAGS $DIR/kernel.c -o $OUT/kernel.elf -DARCH_X64 \
         -I ./src/kernel -I ./src/kernel/headers/ -I $DIR \
         -mcmodel=kernel -Wl,--image-base=0xFFFFFFFFFFF00000
-
-      $CC $CFLAGS $USR/main.c -o $OUT/user_main.elf -DARCH_X64 \
-        -I ./src/user/
 
       # $CC $CFLAGS $USER_FLAGS $USR/main.c -o $OUT/user_main.bin -DARCH_X64
       # nasm -fbin src/user/example.s -o out/user/example.bin
@@ -55,7 +55,6 @@ build() {
         -I ./src/kernel -I ./src/kernel/headers -I $DIR
 
       mcopy -i fat.img $OUT/BOOTX64.EFI ::/EFI/BOOT -D o
-      mcopy -i fat.img $OUT/user_main.elf ::/ -D o
       mcopy -i fat.img $OUT/kernel.elf ::/ -D o
       ;;
     *)

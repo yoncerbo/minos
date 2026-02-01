@@ -7,3 +7,4 @@ add-symbol-file out/x64-uefi/BOOTX64.EFI -o $base
 set disassembly-flavor intel
 
 add-symbol-file out/x64-uefi/kernel.elf
+add-symbol-file out/x64-uefi/user_main.elf

@@ -42,12 +42,11 @@ void load_elf_file(PageAllocator2 *alloc, PageTable *pml4, void *file, vaddr_t *
   *out_entry = elf->program_entry_addr;
 }
 
-void load_elf_file2(MemoryManager *mm, void *file, vaddr_t *out_entry) {
-  ElfHeader64 *elf = file;
-  uint8_t *bytes = file;
+void load_elf_file2(MemoryManager *mm, const char *file, vaddr_t *out_entry) {
+  ElfHeader64 *elf = (void *)file;
   validate_elf_header(elf);
 
-  ElfProgramHeader64 *progs = (void *)(bytes + elf->program_table_offset);
+  ElfProgramHeader64 *progs = (void *)(file + elf->program_table_offset);
   for (uint32_t i = 0; i < elf->program_table_entry_count; ++i) {
     ElfProgramHeader64 *prog = &progs[i];
     if (progs->type != ELF_PROG_EXECUTABLE) continue;
@@ -58,7 +57,7 @@ void load_elf_file2(MemoryManager *mm, void *file, vaddr_t *out_entry) {
 
     paddr_t physical = alloc_pages2(mm->page_alloc, page_count);
 
-    memcpy((void *)(physical + mm->virtual_offset), (void *)(bytes + prog->file_offset), prog->size_in_file);
+    memcpy((void *)(physical + mm->virtual_offset), (void *)(file + prog->file_offset), prog->size_in_file);
 
     map_virtual_range(mm, prog->virtual_addr, physical, prog->size_in_memory,
         PAGE_BIT_PRESENT | PAGE_BIT_WRITABLE | PAGE_BIT_USER);

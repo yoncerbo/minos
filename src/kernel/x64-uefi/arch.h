@@ -116,15 +116,18 @@ typedef struct {
 
 SYSV extern void load_gdt_table(GdtPtr *gdt_table_ptr);
 SYSV extern void enable_system_calls(void *kernel_gs_base);
-SYSV extern size_t run_user_program(void *function, void *stack_top);
+SYSV extern size_t run_user_program(vaddr_t ip, vaddr_t sp);
 SYSV extern void putchar_qemu_debugcon(char ch);
+void exit_user_process(void);
 
-ALIGNED(PAGE_SIZE) PageTable PML4;
+struct Process;
 
 typedef struct {
   size_t kernel_sp;
   size_t user_sp;
   Sink *user_log_sink;
+  struct Process *user_process;
+  size_t user_exit_code;
 } KernelThreadContext;
 
 NORETURN void user_main(void);
@@ -236,6 +239,7 @@ typedef struct {
 
 void validate_elf_header(ElfHeader64 *elf);
 void load_elf_file(PageAllocator2 *alloc, PageTable *pml4, void *file, vaddr_t *out_entry);
+void load_elf_file2(MemoryManager *mm, const char *file, vaddr_t *out_entry);
 
 enum {
   APIC_LOCAL_ID = 0x20 / 4,
@@ -268,5 +272,36 @@ void discover_pci_devices(MemoryManager *mm);
 #define SCANCODE_BUFFER_SIZE 128
 uint8_t SCANCODE_BUFFER[SCANCODE_BUFFER_SIZE];
 uint32_t SCANCODE_POSITION = 0;
+
+typedef struct PACKED {
+  size_t rax; size_t rdi; size_t rsi; size_t rdx;
+  size_t rcx; // user instruction pointer
+  size_t r8; size_t r9; size_t r10;
+  size_t r11; // flags
+
+  size_t rbx, rbp, r12, r13, r14, r15;
+} SyscallFrame;
+
+typedef struct {
+  size_t rax; size_t rbx; size_t rcx;
+  size_t rdx; size_t rsi; size_t rdi;
+  size_t rbp; size_t r8; size_t r9;
+  size_t r10; size_t r11; size_t r12;
+  size_t r13; size_t r14; size_t r15;
+
+  size_t vector_number, error_code;
+  size_t ip, cs, flags, sp, ss;
+  size_t padding; // NOTE: Don't know what's that
+  KernelThreadContext *thread_context;
+} IsrFrame;
+
+typedef struct Process {
+  SyscallFrame frame;
+  size_t sp;
+  MemoryManager mm;
+  struct Process *next;
+} Process;
+
+void load_user_process(Process *p, MemoryManager *kernel_mm, const char *elf_file);
 
 #endif

@@ -1,10 +1,14 @@
 #include "cmn/lib.h"
 #include "lib.h"
 
-int global = 432;
-
 int main(void) {
-  log("hello from the userspace: %d", global);
-  return global;
+
+  // for (int i = 0; i < 10; ++i) {
+    log("Iteration: %d", 1);
+    sys_yield();
+  // }
+    log("Iteration: %d", 2);
+    sys_yield();
+  return 0;
 }
 

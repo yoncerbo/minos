@@ -12,6 +12,7 @@
 #include "elf.c"
 #include "gdt.c"
 #include "apic.c"
+#include "process.c"
 
 #define MAX_PHYSICAL_RANGES 256
 PhysicalPageRange PAGE_RANGES[MAX_PHYSICAL_RANGES];

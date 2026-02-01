@@ -39,17 +39,6 @@ void setup_idt(InterruptDescriptor *idt) {
   ASM("lidt %0" : : "m"(idt_ptr));
 }
 
-typedef struct {
-  size_t rax; size_t rbx; size_t rcx;
-  size_t rdx; size_t rsi; size_t rdi;
-  size_t rbp; size_t r8; size_t r9;
-  size_t r10; size_t r11; size_t r12;
-  size_t r13; size_t r14; size_t r15;
-
-  size_t vector_number, error_code;
-  size_t ip, cs, flags, sp, ss;
-} IsrFrame;
-
 typedef enum {
   INT_BREAKPOINT = 3,
   INT_INVALID_OPCODE = 6,
@@ -61,6 +50,9 @@ typedef enum {
 
 SYSV IsrFrame *interrupt_handler(IsrFrame *frame) {
   switch (frame->vector_number) {
+    case INT_BREAKPOINT: {
+      log("Brekpoint");
+    } break;
     case INT_GENERAL_PROTECTION: {
       log("General protection fault");
     } break;

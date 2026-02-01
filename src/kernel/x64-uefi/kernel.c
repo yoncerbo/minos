@@ -14,6 +14,7 @@
 #include "text_input.c"
 #include "console.c"
 #include "logging.c"
+#include "process.c"
 
 INCLUDE_ASM("utils.s");
 
@@ -25,15 +26,43 @@ Tss TSS;
 GdtEntry GDT[GDT_COUNT];
 ALIGNED(16) InterruptDescriptor IDT[256];
 
-uint8_t INTERUPT_STACK[PAGE_SIZE];
-uint8_t USER_STACK[4 * PAGE_SIZE];
+ALIGNED(PAGE_SIZE) uint8_t INTERUPT_STACK[PAGE_SIZE];
 
 #define MAX_PHYSICAL_RANGES 256
 PhysicalPageRange PAGE_RANGES[MAX_PHYSICAL_RANGES];
 
+typedef struct {
+  Sink sink;
+  Console *console;
+  uint32_t fg;
+  uint32_t bg;
+} ColoredConsoleSink;
+
+Error colored_write(void *data, const void *buffer, uint32_t limit) {
+  ColoredConsoleSink *this = data;
+
+  uint32_t fg = this->console->fg;
+  uint32_t bg = this->console->bg;
+  this->console->fg = this->fg;
+  this->console->bg = this->bg;
+  Error err = write(&this->console->sink, buffer, limit);
+  this->console->fg = fg;
+  this->console->bg = bg;
+  return err;
+}
+
 void _start(BootData *data) {
   LOG_SINK = &QEMU_DEBUGCON_SINK;
-  setup_gdt_and_tss((GdtEntry *)GDT, &TSS, &INTERUPT_STACK[sizeof(INTERUPT_STACK) - 1]);
+
+  KernelThreadContext ctx = {
+    .user_log_sink = &QEMU_DEBUGCON_SINK,
+  };
+
+  // TODO: Allocate interrupt stack per thread
+  uint8_t *int_stack_end = &INTERUPT_STACK[sizeof(INTERUPT_STACK) - 8];
+  *(uint64_t *)int_stack_end = (size_t)&ctx;
+  
+  setup_gdt_and_tss((GdtEntry *)GDT, &TSS, int_stack_end);
   setup_idt(IDT);
 
   ASSERT(data->ranges_len <= MAX_PHYSICAL_RANGES);
@@ -45,7 +74,7 @@ void _start(BootData *data) {
     .len = data->ranges_len,
   };
 
-  // NOTES:
+  // NOTE:
   // Virtual memory maps from the bootloader:
   // physical memmory ofseted by HIGHER_HALF
   // kernel code and data at -2GiB
@@ -86,7 +115,14 @@ void _start(BootData *data) {
   };
   load_psf2_font(&console.font, FONT_FILE);
   clear_console(&console);
-  LOG_SINK = &console.sink;
+
+  ColoredConsoleSink kernel_sink = {
+    .sink.write = colored_write,
+    .console = &console,
+    .fg = WHITE,
+    .bg = 0x11111111,
+  };
+  LOG_SINK = &kernel_sink.sink;
 
   setup_apic(&mm, &APIC);
   DEBUGD(APIC.id);
@@ -105,41 +141,26 @@ void _start(BootData *data) {
   write_ioapic_register(io_apic, keyboard_reg, 0xF1);
   write_ioapic_register(io_apic, keyboard_reg + 1, (size_t)APIC.id >> 56);
 
-  KernelThreadContext thread_context = {
-    .user_log_sink = &console.sink,
+  enable_system_calls(&ctx);
+  ColoredConsoleSink user_sink = {
+    .sink.write = colored_write,
+    .console = &console,
+    .fg = 0x00ff00ff,
+    .bg = 0x11111111,
   };
-  enable_system_calls(&thread_context);
+  ctx.user_log_sink = &user_sink.sink;
 
-  paddr_t user_pml4_addr = alloc_pages2(&page_alloc, 1);
+  Process p = {0};
+  load_user_process(&p, &mm, USER_FILE);
 
-  PageTable *user_pml4 = (void *)(user_pml4_addr + mm.virtual_offset);
-  memcpy(user_pml4, (void *)(mm.pml4 + mm.virtual_offset), sizeof(*user_pml4));
+  log("Running user process");
+  ctx.user_sp = p.sp;
+  ctx.user_process = &p;
 
-  MemoryManager user_mm1 = {
-    .page_alloc = &page_alloc,
-    .start = PAGE_SIZE, // NOTE: Skip first null page
-    .end = HIGHER_HALF,
-    .first_object = 0,
-    .objects_count = 1, // NOTE: first object is null
-    .virtual_offset = HIGHER_HALF,
-    .pml4 = user_pml4_addr,
-  };
-
-  flush_page_table(&user_mm1);
-
-  vaddr_t user_entry;
-  load_elf_file2(&user_mm1, USER_FILE, &user_entry);
-
-  // TODO: Create a protection for the stack
-  uint8_t *user_stack = alloc(&user_mm1, 8 * PAGE_SIZE);
-  uint8_t *user_stack_top = user_stack + 8 * PAGE_SIZE - 1;
-
-  log("Running user program");
-  console.fg = 0x00ff00ff;
-  size_t status;
-  status = run_user_program((void *)user_entry, (void *)user_stack_top);
-  DEBUGD(status);
-  console.fg = WHITE;
+  for (int i = 0; i < 2; ++i) {
+    run_user_process();
+    log("Back in kernel");
+  }
 
   ASM("sti");
 

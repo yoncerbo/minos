@@ -56,6 +56,7 @@ typedef struct {
 #define va_arg __builtin_va_arg
 #define bswap16(n) __builtin_bswap16(n)
 #define bswap32(n) __builtin_bswap32(n)
+#define offsetof(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
 
 #define STRINGIFY_INNER(x) #x
 #define STRINGIFY(x) STRINGIFY_INNER(x) 
@@ -92,6 +93,7 @@ uint32_t __bswapsi2(uint32_t u);
 typedef enum {
   SYS_LOG = 1,
   SYS_EXIT = 2,
+  SYS_YIELD = 3,
 } SyscallType;
 
 typedef enum {

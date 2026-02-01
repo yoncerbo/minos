@@ -48,54 +48,6 @@ load_gdt_table:
 
   ret
 
-.extern handle_syscall
-
-syscall_stub:
-  swapgs # swap KERNEL_GS_BAS and GS_BAS MSRs
-  mov gs:CTX_USER_SP, rsp
-  mov rsp, gs:CTX_KERNEL_SP
-
-  push r11
-  push r10
-  push r9
-  push r8
-  push rcx
-  push rdx
-  push rsi
-  push rdi
-  push rax
-
-  # system v calling convention
-  # preserved by the function: rbx, rsp, rbp, r12, r13, r14, r15
-  # scrathch registers: rax, rdi, rsi, rdx, rcx, r8, r9, r10, r11
-  mov rdi, rsp
-  call handle_syscall
-  test rax, rax
-  jnz .user_program_exit
-
-  pop rax
-  pop rdi
-  pop rsi
-  pop rdx
-  pop rcx
-  pop r8
-  pop r9
-  pop r10
-  pop r11
-
-  mov rsp, gs:CTX_USER_SP
-  swapgs
-  sysretq
-
-.user_program_exit:
-  pop rax # return code is in the rax
-  add rsp, 8 * 8
-  # NOTE: The rsp in set for kernel stack.
-  # We entered use program from a function call.
-  # The return address is on the kernel stack.
-  # We can just return.
-  ret
-
 .global enable_system_calls
 # input:
 #   rdi: kernel gs base pointer
@@ -116,7 +68,9 @@ enable_system_calls:
   wrmsr
 
   mov ecx, MSR_LSTAR
-  lea rax, syscall_stub
+  # lea rax, syscall_stub
+  .extern syscall_entry
+  lea rax, syscall_entry
   mov rdx, rax
   shr rdx, 32
   wrmsr
@@ -142,29 +96,6 @@ enable_system_calls:
   swapgs # we're in kernel, so we're gonna use
          # kernel gs base
   ret
-
-.global run_user_program
-# inputs:
-#   rdi: user function pointer
-#   rsi: user stack pointer
-run_user_program:
-  mov gs:CTX_KERNEL_SP, rsp
-  mov rcx, rdi # new instruction pointer
-  mov rsp, rsi # new stack pointer
-  mov r11, 0x0202 # eflags
-
-  swapgs # swap into user gs base
-  # SOURCE: https://www.felixcloutier.com/x86/sysret
-  sysretq
-
-.global putchar_qemu_debugcon
-# inputs:
-#   rdi: character to output
-putchar_qemu_debugcon:
-  mov rax, rdi
-  out 0xE9, al
-  ret
-
 
 # Cpu pushes those on the stack during an interrupt
 # ss, rsp, rflags, cs, rip
